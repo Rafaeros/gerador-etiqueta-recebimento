@@ -1,0 +1,1 @@
+Programa para gerar etiquetas de recebimento.

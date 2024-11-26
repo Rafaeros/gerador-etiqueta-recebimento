@@ -26,8 +26,8 @@ class OrderData:
 class NFeData:
     """Dataclass to represent an NFe and generate a JSON file to generate labels"""
 
-    nfe_number: str
-    supplier: str
+    nfe_number: int
+    supplier_name: str
     orders: List[OrderData] = field(default_factory=list)
 
     def to_dict(self) -> Dict:
@@ -80,7 +80,7 @@ class CargaMaquinaClient:
         login_button.click()
 
         driver.get(
-            "https://app.cargamaquina.com.br/compra?Compra%5Bnegociacao%5D=171910"
+            "https://app.cargamaquina.com.br/compra?Compra%5Bnegociacao%5D=171911"
         )
 
         nfe_checkbox = driver.find_elements(
@@ -95,25 +95,29 @@ class CargaMaquinaClient:
 
         return html
 
-    def get_data(self, content: str) -> None:
+    def get_data(self, content: str) -> str:
         """Get data from HTML and save it to a JSON format"""
 
         soup = BeautifulSoup(content, "html.parser")
-        nfe_number = soup.find("input", {"id": "FaturamentoGrid_0_observacao"}).get(
-            "value"
+        nfe_number: int = int(
+            soup.find("input", {"id": "FaturamentoGrid_0_observacao"})
+            .get("value")
+            .split("-")[-1]
+            .strip()
         )
-        supplier = (
+
+        supplier_name = (
             soup.find("span", {"class": "select2-chosen"}).text.strip().split(" ")[0]
         )
         mp_table = soup.find_all("table")[1]
-        orders = []
-
+        orders: List[OrderData] = []
         trs = mp_table.find_all("tr")[1:]
         for tr in trs:
-            code = tr.find_all("td")[3].text.strip()
-            description = tr.find_all("td")[4].text.strip()
-            qty, unit_type = tr.find_all("td")[7].text.strip().split(" ")
-            order = tr.find_all("td")[17].text.strip()
+            code: str = tr.find_all("td")[3].text.strip()
+            description: str = tr.find_all("td")[4].text.strip()
+            qty: float = tr.find_all("td")[7].text.strip().split(" ")[0]
+            unit_type: str = tr.find_all("td")[7].text.strip().split(" ")[-1].upper()
+            order: int = tr.find_all("td")[16].text.strip()
             orders.append(
                 OrderData(
                     code=code,
@@ -123,9 +127,12 @@ class CargaMaquinaClient:
                     order=order,
                 )
             )
-            nfe_data = NFeData(nfe_number=nfe_number, supplier=supplier, orders=orders)
-            nfe_data.to_json()
+        nfe_data = NFeData(
+            nfe_number=nfe_number, supplier_name=supplier_name, orders=orders
+        )
+        data: str = nfe_data.to_json()
 
+        return data
 
 if __name__ == "__main__":
     client = CargaMaquinaClient(username="your username", password="your password")

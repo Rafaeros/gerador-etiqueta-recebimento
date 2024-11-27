@@ -1,235 +1,272 @@
 """
-Module to Scrape data from CargaMaquina
+Scraping with selenium and requests
 """
 
 import json
-import asyncio
-from datetime import datetime
-import logging
-from typing import Optional, List, Dict, Union
-from dataclasses import dataclass, asdict
-from pathlib import Path
-import aiohttp
+from dataclasses import dataclass, field, asdict
+from typing import List, Dict
+from datetime import datetime as dt
+import requests
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import (
+    NoSuchElementException,
+    TimeoutException,
+    WebDriverException,
+)
+
 
 @dataclass
 class OrderData:
     """Dataclass to represent an order"""
-    pedido: str
-    fornecedor: str
-    codigo: str
-    material: str
-    quantidade_total: float
-    quantidade_recebida: float
-    quantidade_pendente: float
 
-    def to_dict(self) -> dict:
-        """Convert OrderData to dictionary"""
+    code: str
+    description: str
+    qty: float
+    qty_total: float
+    unit_type: str
+    order: str
+
+
+@dataclass
+class NFeData:
+    """Dataclass to represent an NFe and generate a JSON file to generate labels"""
+
+    nfe_number: int
+    supplier_name: str
+    orders: List[OrderData] = field(default_factory=list)
+
+    def to_dict(self) -> Dict:
+        """Convert the istance to a dictionary"""
         return asdict(self)
 
-    @classmethod
-    def from_dict(cls, data: dict) -> 'OrderData':
-        """Create OrderData from dictionary"""
-        return cls(**data)
+    def to_json(self) -> str:
+        """Convert to json"""
+        with open("nfe_data.json", "w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, ensure_ascii=False, indent=4)
+
+        return json.dumps(self.to_dict(), ensure_ascii=False, indent=4)
+
+
+@dataclass
+class Material:
+    """Dataclass to represent a pending material"""
+
+    creation_date: str
+    code: str
+    op_number: str
+    product: str
+    pending_qty: float
+
+
+@dataclass
+class PendingMaterials:
+    """Dataclass to represent a list of pending materials"""
+
+    pending_materials: List[Material] = field(default_factory=list)
+
+    def to_dict(self) -> Dict:
+        """Convert the istance to a dictionary"""
+        return asdict(self)
+
+    def to_json(self) -> str:
+        """Convert to json"""
+        with open("pending_materials.json", "w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, ensure_ascii=False, indent=4)
+
+        return json.dumps(self.to_dict(), ensure_ascii=False, indent=4)
 
 
 class CargaMaquinaClient:
     """Client to interact with CargaMaquina"""
+
+    today = dt.now()
+
     def __init__(self, username: str, password: str):
         self.username = username
         self.password = password
-        self.session: Optional[aiohttp.ClientSession] = None
-        self.base_url = "https://app.cargamaquina.com.br"
-        self.logger = logging.getLogger(__name__)
+        self.driver = webdriver.Chrome(options=self._configure_chrome())
+        self.requests_cookies = self.login()
 
-    async def __aenter__(self):
-        self.session = aiohttp.ClientSession()
-        return self
+    def _configure_chrome(self) -> Options:
+        # Configurar as opções do Chrome
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")  # Modo headless
+        chrome_options.add_argument(
+            "--disable-gpu"
+        )  # Desativa GPU (recomendado no modo headless)
+        chrome_options.add_argument("--no-sandbox")  # Aumenta a segurança
+        chrome_options.add_argument(
+            "--disable-dev-shm-usage"
+        )  # Evita erros de memória em ambientes cloud
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.session:
-            await self.session.close()
+        return chrome_options
 
-    async def login(self) -> bool:
-        """
-        Login to CargaMaquina
-        Returns True if login was successful
-        """
-        if not self.session:
-            self.session = aiohttp.ClientSession()
-
-        login_url = f"{self.base_url}/site/login?c=31.1~78%2C8%5E56%2C8"
-        login_payload = {
-            "LoginForm[username]": self.username,
-            "LoginForm[password]": self.password,
-            "LoginForm[codigoConexao]": "31.1~78,8^56,8",
-            "yt0": "Entrar"
-        }
-
+    def login(self):
+        """Login to carga maquina and get cookies for requests"""
         try:
-            async with self.session.post(url=login_url, data=login_payload) as response:
-                print("Login successful")
-                return response.status == 200
-        except Exception as e:
-            self.logger.error("Login failed: %s", str(e))
-            return False
-
-    def _parse_currency_to_float(self, value: str) -> float:
-        """Convert currency string to float"""
-        try:
-            cleaned = value.replace('R$', '').replace(
-                '.', '').replace(',', '.').strip()
-            return float(cleaned)
-        except (ValueError, AttributeError):
-            return 0.0
-
-    def _parse_quantity_to_float(self, value: str) -> float:
-        """Convert quantity string to float"""
-        try:
-            cleaned = value.replace(',', '.').strip()
-            return float(cleaned)
-        except (ValueError, AttributeError):
-            return 0.0
-
-    def _parse_table_row(self, row) -> Optional[OrderData]:
-        """Parse a single table row into OrderData"""
-        try:
-            cells = row.find_all('td')
-            return OrderData(
-                pedido=cells[0].text.strip(),
-                fornecedor=cells[3].text.strip().split(' ')[0],
-                codigo=cells[5].text.strip(),
-                material=cells[6].text.strip(),
-                quantidade_recebida=self._parse_quantity_to_float(cells[9].text),
-                quantidade_pendente=self._parse_quantity_to_float(cells[10].text),
-                quantidade_total=self._parse_quantity_to_float(cells[11].text),
+            self.driver.get(
+                "https://app.cargamaquina.com.br/site/login?c=31.1~78%2C8%5E56%2C8"
             )
-        except Exception as e:
-            self.logger.error("Error parsing row: %s", str(e))
-            return None
+            try:
+                username_input = self.driver.find_element(
+                    by=By.NAME, value="LoginForm[username]"
+                )
 
-    def parse_orders_html(self, html_content: str) -> List[OrderData]:
-        """Parse HTML content and extract orders data"""
-        soup = BeautifulSoup(html_content, 'html.parser')
-        trs = soup.find_all("tr")
+                password_input = self.driver.find_element(
+                    by=By.NAME, value="LoginForm[password]"
+                )
+            except NoSuchElementException as e:
+                print(f"Campos de login ou senha não encontrados. {e}")
 
-        orders = []
-        for row in trs[1:]:
-            order_data = self._parse_table_row(row)
-            if order_data:
-                orders.append(order_data)
+            username_input.send_keys(self.username)
+            password_input.send_keys(self.password)
 
-        return orders
+            login_button = self.driver.find_element(by=By.NAME, value="yt0")
+            login_button.click()
 
-    def orders_to_dict_list(self, orders: List[OrderData]) -> List[Dict]:
-        """Convert list of OrderData to list of dictionaries"""
-        return [order.to_dict() for order in orders]
+            selenium_cookies = self.driver.get_cookies()
+            requests_cookies = {
+                cookie["name"]: cookie["value"] for cookie in selenium_cookies
+            }
 
-    def orders_to_json(self, orders: List[OrderData], indent: int = 2) -> str:
-        """Convert list of OrderData to JSON string"""
-        return json.dumps(self.orders_to_dict_list(orders),
-                          ensure_ascii=False,
-                          indent=indent)
+            return requests_cookies
 
-    def save_orders_json(self, orders: List[OrderData],
-                         filepath: Union[str, Path],
-                         indent: int = 2) -> None:
-        """Save orders to JSON file"""
-        filepath = Path(filepath)
-        filepath.parent.mkdir(parents=True, exist_ok=True)
+        except TimeoutException as e:
+            print(f"Timeout: {e}")
+        except WebDriverException as e:
+            print(f"Error: {e}")
+        finally:
+            self.driver.quit()
 
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(self.orders_to_dict_list(orders), f,
-                      ensure_ascii=False,
-                      indent=indent)
-
-    def load_orders_json(self, filepath: Union[str, Path]) -> List[OrderData]:
-        """Load orders from JSON file"""
-        filepath = Path(filepath)
-
+    def nfe_data_scraping(self) -> str:
+        """Scraping NFE data"""
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            return [OrderData.from_dict(item) for item in data]
-        except Exception as e:
-            self.logger.error("Error loading JSON file: %s", str(e))
-            return []
+            self.driver.get(
+                "https://app.cargamaquina.com.br/compra?Compra%5Bnegociacao%5D=171791"
+            )
 
-    async def get_orders_data(self) -> Optional[List[OrderData]]:
-        """Get orders data from CargaMaquina and parse it"""
-        if not self.session:
-            self.logger.error("No active session. Please login first.")
-            return None
+            nfe_checkbox = self.driver.find_elements(
+                by=By.XPATH, value='//*[@id="compraSelecionados_0"]'
+            )
+            nfe_checkbox[0].click()
 
-        orders_url = f"{self.base_url}/relatorio/compra/renderGridExportacaoEntregasPendentes"
+            nfe_view = self.driver.find_element(
+                by=By.XPATH, value='//*[@id="linkVisualizar"]'
+            )
+            nfe_view.click()
+
+            html: str = self.driver.page_source
+
+            return html
+
+        except TimeoutException as e:
+            print(f"Timeout: {e}")
+
+    def get_nfe_data(self, content: str) -> str:
+        """Get data from HTML and save it to a JSON format"""
+
+        soup = BeautifulSoup(content, "html.parser")
+        nfe_number: int = int(
+            soup.find("input", {"id": "FaturamentoGrid_0_observacao"})
+            .get("value")
+            .split("-")[-1]
+            .strip()
+        )
+
+        supplier_name = (
+            soup.find("span", {"class": "select2-chosen"}).text.strip().split(" ")[0]
+        )
+        mp_table = soup.find_all("table")[1]
+        orders: List[OrderData] = []
+        trs = mp_table.find_all("tr")[1:]
+        for tr in trs:
+            code: str = tr.find_all("td")[3].text.strip()
+            description: str = tr.find_all("td")[4].text.strip()
+            qty: float = tr.find_all("td")[7].text.strip().split(" ")[0]
+            unit_type: str = tr.find_all("td")[7].text.strip().split(" ")[-1].upper()
+            order: int = tr.find_all("td")[16].text.strip()
+            if code == "BACKAS35PF01":
+                orders.append(
+                    OrderData(
+                        code=code,
+                        description=description,
+                        qty=float(qty),
+                        qty_total=float(qty),
+                        unit_type=unit_type,
+                        order=order,
+                    )
+                )
+        nfe_data = NFeData(
+            nfe_number=nfe_number, supplier_name=supplier_name, orders=orders
+        )
+        data: str = nfe_data.to_json()
+
+        return data
+
+    def get_requested_materials(self, nfe_material_code: str):
+        "Get the data of pending materials in production orders on CargaMaquina"
         params = {
-            'RelatorioEntregasPendentes[referencia]': 'ENT',
-            'RelatorioEntregasPendentes[previsaoInicio]': '',
-            'RelatorioEntregasPendentes[previsaoFim]': '',
-            'RelatorioEntregasPendentes[fornecedorId]': '',
-            'idNovoMaterialsel2Material': '',
-            'novoMaterialsel2Material': '',
-            'txtNomeMaterialModalmodalIncluirMaterialSimplificadosel2Material': '',
-            'unidadeMedidaId': '',
-            'servicoIdModalmodalIncluirMaterialSimplificadosel2Material': '',
-            'RelatorioEntregasPendentes[materialId]': '',
-            'RelatorioEntregasPendentes[tipoFrete]': '9',
+            "Pedido[_nomeMaterial]": "",
+            "Pedido[_solicitante]": "",
+            "Pedido[status_id]": "",
+            "Pedido[situacao]": "TODAS",
+            "Pedido[_qtdeFornecida]": "Parcialmente",
+            "Pedido[_inicioCriacao]": "01/0/2024",
+            "Pedido[_fimCriacao]": "",
+            "pageSize": "20",
         }
 
-        try:
-            async with self.session.get(url=orders_url, params=params) as response:
-                if response.status == 200:
-                    print("GET SUCCESS")
-                    html_content = await response.text()
-                    return self.parse_orders_html(html_content)
-                else:
-                    self.logger.error("Failed to get orders data. Status: %d", response.status)
-                    return None
-        except Exception as e:
-            self.logger.error("Error fetching orders data: %s", str(e))
+        response = requests.get(
+            "https://app.cargamaquina.com.br/pedido/exportarPedidoFaltaMP",
+            params=params,
+            cookies=self.requests_cookies,
+            timeout=20,
+        )
+
+        if not response.ok:
+            print(f"Error: {response.status_code}")
             return None
 
+        soup = BeautifulSoup(response.content, "html.parser")
 
-async def periodic_fetch(interval_seconds: int = 300):
-    """
-    Periodically fetch and parse orders data
-    :param interval_seconds: Time between requests in seconds (default 5 minutes)
-    """
-    async with CargaMaquinaClient(username="your_username", password="your_password") as client:
-        if not await client.login():
-            raise Exception("Failed to login")
+        materials: List[Material] = []
+        trs = soup.find_all("tr")[1:]
+        for tr in trs:
+            creation_date: dt = dt.strptime(
+                tr.find_all("td")[0].text.strip(), "%d/%m/%y"
+            )
+            code: str = tr.find_all("td")[1].text.strip()
+            op_number: str = str(tr.find_all("td")[3].text.strip())
+            product: str = tr.find_all("td")[4].text.strip()
+            pending_qty: str | float = tr.find_all("td")[7].text.strip().split(" ")[0]
+            unit_type: str = tr.find_all("td")[7].text.strip().split(" ")[-1]
 
-        # Create data directory if it doesn't exist
-        data_dir = Path("data")
-        data_dir.mkdir(exist_ok=True)
+            if (creation_date.year < self.today.year) or (unit_type == "mt"):
+                continue
 
-        while True:
-            try:
-                orders = await client.get_orders_data()
-                if orders:
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            if "." in pending_qty:
+                pending_qty = float(pending_qty.replace(".", ""))
 
-                    # Save raw orders data
-                    json_path = data_dir / f"orders_{timestamp}.json"
-                    client.save_orders_json(orders, json_path)
-                    print(f"Saved orders data to {json_path}")
+            pending_qty = float(pending_qty)
+            materials.append(
+                Material(
+                    creation_date=creation_date.strftime("%d/%m/%y"),
+                    code=code,
+                    op_number=op_number,
+                    product=product,
+                    pending_qty=pending_qty,
+                )
+            )
 
-                await asyncio.sleep(interval_seconds)
+        pending_materials = PendingMaterials(pending_materials=materials)
+        data = pending_materials.to_json()
 
-            except Exception as e:
-                print(f"Error during fetch: {str(e)}")
-                if not await client.login():
-                    print("Failed to re-login, waiting before retry...")
-                await asyncio.sleep(60)
+        return data
 
-# Example usage
 if __name__ == "__main__":
-    async def main():
-        """Main function"""
-        async with CargaMaquinaClient(username="your username", password="your password") as client:
-            if await client.login():
-                orders = await client.get_orders_data()
-                if orders:
-                    # Salvar dados brutos
-                    client.save_orders_json(orders, "pedidos.json")
-    asyncio.run(main())
+    client = CargaMaquinaClient(username="your username", password="your password")
+    print(client.get_nfe_data(client.nfe_data_scraping()))
+    client.get_requested_materials("BACKAS35PF01")

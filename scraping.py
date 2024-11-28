@@ -22,38 +22,6 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 @dataclass
-class OrderData:
-    """Dataclass to represent an order"""
-
-    code: str
-    description: str
-    qty: float
-    qty_total: float
-    unit_type: str
-    order: str
-
-
-@dataclass
-class NFeData:
-    """Dataclass to represent an NFe and generate a JSON file to generate labels"""
-
-    nfe_number: int
-    supplier_name: str
-    orders: List[OrderData] = field(default_factory=list)
-
-    def to_dict(self) -> Dict:
-        """Convert the istance to a dictionary"""
-        return asdict(self)
-
-    def to_json(self) -> str:
-        """Convert to json"""
-        with open("nfe_data.json", "w", encoding="utf-8") as f:
-            json.dump(self.to_dict(), f, ensure_ascii=False, indent=4)
-
-        return json.dumps(self.to_dict(), ensure_ascii=False, indent=4)
-
-
-@dataclass
 class Material:
     """Dataclass to represent a pending material"""
 
@@ -74,9 +42,42 @@ class PendingMaterials:
         """Convert the istance to a dictionary"""
         return asdict(self)
 
-    def to_json(self) -> str:
+    def to_json(self) -> dict:
         """Convert to json"""
         with open("pending_materials.json", "w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, ensure_ascii=False, indent=4)
+
+        return self.to_dict()
+
+
+@dataclass
+class OrderData:
+    """Dataclass to represent an order"""
+
+    code: str
+    description: str
+    qty: float
+    qty_total: float
+    unit_type: str
+    order: int
+
+
+@dataclass
+class NFeData:
+    """Dataclass to represent an NFe and generate a JSON file to generate labels"""
+
+    nfe_number: int
+    supplier_name: str
+    orders: List[OrderData] = field(default_factory=list)
+    pending_materials: List[Dict] = field(default_factory=list)
+
+    def to_dict(self) -> Dict:
+        """Convert the istance to a dictionary"""
+        return asdict(self)
+
+    def to_json(self) -> str:
+        """Convert to json"""
+        with open("nfe_data.json", "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=4)
 
         return json.dumps(self.to_dict(), ensure_ascii=False, indent=4)
@@ -116,6 +117,11 @@ class CargaMaquinaClient:
         self.login()
         self._initialize_client()
 
+    def _handle_login_and_retry(self):
+        """Logs in, saves cookies, and retries operations."""
+        self.login()
+        self._initialize_client()
+
     def _configure_chrome(self) -> Options:
         """Configure chrome options to run in headless mode."""
         chrome_options = Options()
@@ -127,16 +133,16 @@ class CargaMaquinaClient:
 
     def _save_cookies(self) -> Dict:
         """Save cookies to a JSON file"""
-        selenium_cookies = self.driver.get_cookies()
+        self.selenium_cookies = self.driver.get_cookies()
 
         with open("cookies.json", "w", encoding="utf-8") as f:
-            json.dump(selenium_cookies, f, ensure_ascii=False, indent=4)
+            json.dump(self.selenium_cookies, f, ensure_ascii=False, indent=4)
 
-        requests_cookies = {
-            cookie["name"]: cookie["value"] for cookie in selenium_cookies
+        self.requests_cookies = {
+            cookie["name"]: cookie["value"] for cookie in self.selenium_cookies
         }
         with open("requests_cookies.json", "w", encoding="utf-8") as f:
-            json.dump(requests_cookies, f, ensure_ascii=False, indent=4)
+            json.dump(self.requests_cookies, f, ensure_ascii=False, indent=4)
 
     def _load_cookies(self):
         """Load cookies from a JSON file"""
@@ -186,7 +192,7 @@ class CargaMaquinaClient:
         """Scraping NFE data"""
         try:
             self.driver.get(
-                "https://app.cargamaquina.com.br/compra?Compra%5Bnegociacao%5D=171791"
+                "https://app.cargamaquina.com.br/compra?Compra%5Bnegociacao%5D=171961"
             )
             nfe_checkbox = WebDriverWait(self.driver, 20).until(
                 EC.presence_of_all_elements_located(
@@ -234,25 +240,32 @@ class CargaMaquinaClient:
             qty: float = tr.find_all("td")[7].text.strip().split(" ")[0]
             unit_type: str = tr.find_all("td")[7].text.strip().split(" ")[-1].upper()
             order: int = tr.find_all("td")[16].text.strip()
-            if code == "BACKAS35PF01":
-                orders.append(
-                    OrderData(
-                        code=code,
-                        description=description,
-                        qty=float(qty),
-                        qty_total=float(qty),
-                        unit_type=unit_type,
-                        order=order,
-                    )
+            orders.append(
+                OrderData(
+                    code=code,
+                    description=description,
+                    qty=float(qty),
+                    qty_total=float(qty),
+                    unit_type=unit_type,
+                    order=order,
                 )
+            )
         nfe_data = NFeData(
             nfe_number=nfe_number, supplier_name=supplier_name, orders=orders
         )
-        data: str = nfe_data.to_json()
+        codes = [order.code for order in nfe_data.orders]
+        print(codes)
+        pending_materials = self.get_requested_materials(codes)
 
-        return data
 
-    def get_requested_materials(self, nfe_material_code: str):
+        for material in pending_materials["pending_materials"]:
+            nfe_data.pending_materials.append(material)
+
+        nfe_data.to_json()
+
+        return nfe_data
+
+    def get_requested_materials(self, nfe_material_code: List[str]):
         "Get the data of pending materials in production orders on CargaMaquina"
         params = {
             "Pedido[_nomeMaterial]": "",
@@ -273,7 +286,7 @@ class CargaMaquinaClient:
         )
 
         if not response.ok:
-            print(f"Error: {response.status_code}")
+            print(f"Error to get pending_materials status_code: {response.status_code}")
             return None
         try:
             soup = BeautifulSoup(response.content, "html.parser")
@@ -296,7 +309,7 @@ class CargaMaquinaClient:
                 if "." in pending_qty:
                     pending_qty = float(pending_qty.replace(".", ""))
 
-                if code != nfe_material_code:
+                if code not in nfe_material_code:
                     continue
 
                 pending_qty = float(pending_qty)
@@ -311,7 +324,7 @@ class CargaMaquinaClient:
                 )
 
             pending_materials = PendingMaterials(pending_materials=materials)
-            data = pending_materials.to_json()
+            data: dict = pending_materials.to_json()
 
             return data
 

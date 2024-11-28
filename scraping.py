@@ -3,6 +3,7 @@ Scraping with selenium and requests
 """
 
 import json
+import os
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict
 from datetime import datetime as dt
@@ -16,6 +17,8 @@ from selenium.common.exceptions import (
     TimeoutException,
     WebDriverException,
 )
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 @dataclass
@@ -83,26 +86,70 @@ class CargaMaquinaClient:
     """Client to interact with CargaMaquina"""
 
     today = dt.now()
+    username: str
+    password: str
 
     def __init__(self, username: str, password: str):
         self.username = username
         self.password = password
         self.driver = webdriver.Chrome(options=self._configure_chrome())
-        self.requests_cookies = self.login()
+        self.requests_cookies: dict = {}
+        self.selenium_cookies: dict = {}
+        self._initialize_client()
+
+    def _initialize_client(self):
+        """Handles loading cookies and scraping data."""
+        try:
+            self._load_cookies()
+            print("Cookies loaded. Scraping data...")
+            self.get_nfe_data(self.nfe_data_scraping())
+            self.get_requested_materials("BACKAS35PF01")
+        except FileNotFoundError:
+            print("Cookie file not found. Logging in again...")
+            self._handle_login_and_retry()
+        except json.JSONDecodeError:
+            print("Invalid cookie format. Logging in again...")
+            self._handle_login_and_retry()
+
+    def _handle_login_and_retry(self):
+        """Logs in, saves cookies, and retries operations."""
+        self.login()
+        self._initialize_client()
 
     def _configure_chrome(self) -> Options:
-        # Configurar as opções do Chrome
+        """Configure chrome options to run in headless mode."""
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Modo headless
-        chrome_options.add_argument(
-            "--disable-gpu"
-        )  # Desativa GPU (recomendado no modo headless)
-        chrome_options.add_argument("--no-sandbox")  # Aumenta a segurança
-        chrome_options.add_argument(
-            "--disable-dev-shm-usage"
-        )  # Evita erros de memória em ambientes cloud
-
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
         return chrome_options
+
+    def _save_cookies(self) -> Dict:
+        """Save cookies to a JSON file"""
+        selenium_cookies = self.driver.get_cookies()
+
+        with open("cookies.json", "w", encoding="utf-8") as f:
+            json.dump(selenium_cookies, f, ensure_ascii=False, indent=4)
+
+        requests_cookies = {
+            cookie["name"]: cookie["value"] for cookie in selenium_cookies
+        }
+        with open("requests_cookies.json", "w", encoding="utf-8") as f:
+            json.dump(requests_cookies, f, ensure_ascii=False, indent=4)
+
+    def _load_cookies(self):
+        """Load cookies from a JSON file"""
+        if "cookies.json" in os.listdir():
+            with open("cookies.json", "r", encoding="utf-8") as file:
+                self.selenium_cookies = json.load(file)
+        else:
+            raise FileNotFoundError
+        if "requests_cookies.json" in os.listdir():
+            with open("requests_cookies.json", "r", encoding="utf-8") as file:
+                self.requests_cookies = json.load(file)
+        else:
+            raise FileNotFoundError
 
     def login(self):
         """Login to carga maquina and get cookies for requests"""
@@ -110,6 +157,7 @@ class CargaMaquinaClient:
             self.driver.get(
                 "https://app.cargamaquina.com.br/site/login?c=31.1~78%2C8%5E56%2C8"
             )
+
             try:
                 username_input = self.driver.find_element(
                     by=By.NAME, value="LoginForm[username]"
@@ -118,28 +166,21 @@ class CargaMaquinaClient:
                 password_input = self.driver.find_element(
                     by=By.NAME, value="LoginForm[password]"
                 )
+
+                username_input.send_keys(self.username)
+                password_input.send_keys(self.password)
+
             except NoSuchElementException as e:
                 print(f"Campos de login ou senha não encontrados. {e}")
 
-            username_input.send_keys(self.username)
-            password_input.send_keys(self.password)
-
             login_button = self.driver.find_element(by=By.NAME, value="yt0")
             login_button.click()
-
-            selenium_cookies = self.driver.get_cookies()
-            requests_cookies = {
-                cookie["name"]: cookie["value"] for cookie in selenium_cookies
-            }
-
-            return requests_cookies
+            self._save_cookies()
 
         except TimeoutException as e:
             print(f"Timeout: {e}")
         except WebDriverException as e:
             print(f"Error: {e}")
-        finally:
-            self.driver.quit()
 
     def nfe_data_scraping(self) -> str:
         """Scraping NFE data"""
@@ -147,9 +188,10 @@ class CargaMaquinaClient:
             self.driver.get(
                 "https://app.cargamaquina.com.br/compra?Compra%5Bnegociacao%5D=171791"
             )
-
-            nfe_checkbox = self.driver.find_elements(
-                by=By.XPATH, value='//*[@id="compraSelecionados_0"]'
+            nfe_checkbox = WebDriverWait(self.driver, 20).until(
+                EC.presence_of_all_elements_located(
+                    (By.XPATH, '//*[@id="compraSelecionados_0"]')
+                )
             )
             nfe_checkbox[0].click()
 
@@ -164,11 +206,15 @@ class CargaMaquinaClient:
 
         except TimeoutException as e:
             print(f"Timeout: {e}")
+        except WebDriverException as e:
+            print(f"Error: {e}")
+        finally:
+            self.driver.quit()
 
-    def get_nfe_data(self, content: str) -> str:
+    def get_nfe_data(self, html: str) -> str:
         """Get data from HTML and save it to a JSON format"""
 
-        soup = BeautifulSoup(content, "html.parser")
+        soup = BeautifulSoup(html, "html.parser")
         nfe_number: int = int(
             soup.find("input", {"id": "FaturamentoGrid_0_observacao"})
             .get("value")
@@ -229,44 +275,52 @@ class CargaMaquinaClient:
         if not response.ok:
             print(f"Error: {response.status_code}")
             return None
+        try:
+            soup = BeautifulSoup(response.content, "html.parser")
 
-        soup = BeautifulSoup(response.content, "html.parser")
-
-        materials: List[Material] = []
-        trs = soup.find_all("tr")[1:]
-        for tr in trs:
-            creation_date: dt = dt.strptime(
-                tr.find_all("td")[0].text.strip(), "%d/%m/%y"
-            )
-            code: str = tr.find_all("td")[1].text.strip()
-            op_number: str = str(tr.find_all("td")[3].text.strip())
-            product: str = tr.find_all("td")[4].text.strip()
-            pending_qty: str | float = tr.find_all("td")[7].text.strip().split(" ")[0]
-            unit_type: str = tr.find_all("td")[7].text.strip().split(" ")[-1]
-
-            if (creation_date.year < self.today.year) or (unit_type == "mt"):
-                continue
-
-            if "." in pending_qty:
-                pending_qty = float(pending_qty.replace(".", ""))
-
-            pending_qty = float(pending_qty)
-            materials.append(
-                Material(
-                    creation_date=creation_date.strftime("%d/%m/%y"),
-                    code=code,
-                    op_number=op_number,
-                    product=product,
-                    pending_qty=pending_qty,
+            materials: List[Material] = []
+            trs = soup.find_all("tr")[1:]
+            for tr in trs:
+                creation_date: dt = dt.strptime(
+                    tr.find_all("td")[0].text.strip(), "%d/%m/%y"
                 )
-            )
+                code: str = tr.find_all("td")[1].text.strip()
+                op_number: str = str(tr.find_all("td")[3].text.strip())
+                product: str = tr.find_all("td")[4].text.strip()
+                pending_qty: str | float = tr.find_all("td")[7].text.strip().split(" ")[0]
+                unit_type: str = tr.find_all("td")[7].text.strip().split(" ")[-1]
 
-        pending_materials = PendingMaterials(pending_materials=materials)
-        data = pending_materials.to_json()
+                if (creation_date.year < self.today.year) or (unit_type == "mt"):
+                    continue
 
-        return data
+                if "." in pending_qty:
+                    pending_qty = float(pending_qty.replace(".", ""))
+
+                if code != nfe_material_code:
+                    continue
+
+                pending_qty = float(pending_qty)
+                materials.append(
+                    Material(
+                        creation_date=creation_date.strftime("%d/%m/%y"),
+                        code=code,
+                        op_number=op_number,
+                        product=product,
+                        pending_qty=pending_qty,
+                    )
+                )
+
+            pending_materials = PendingMaterials(pending_materials=materials)
+            data = pending_materials.to_json()
+
+            return data
+
+        except ValueError as e:
+            print(f"Error: {e}")
+        finally:
+            os.remove("cookies.json")
+            os.remove("requests_cookies.json")
+
 
 if __name__ == "__main__":
     client = CargaMaquinaClient(username="your username", password="your password")
-    print(client.get_nfe_data(client.nfe_data_scraping()))
-    client.get_requested_materials("BACKAS35PF01")

@@ -99,28 +99,11 @@ class CargaMaquinaClient:
         self._initialize_client()
 
     def _initialize_client(self):
-        """Handles loading cookies and scraping data."""
         try:
-            self._load_cookies()
-            print("Cookies loaded. Scraping data...")
+            self.login()
             self.get_nfe_data(self.nfe_data_scraping())
-            self.get_requested_materials("BACKAS35PF01")
-        except FileNotFoundError:
-            print("Cookie file not found. Logging in again...")
-            self._handle_login_and_retry()
-        except json.JSONDecodeError:
-            print("Invalid cookie format. Logging in again...")
-            self._handle_login_and_retry()
-
-    def _handle_login_and_retry(self):
-        """Logs in, saves cookies, and retries operations."""
-        self.login()
-        self._initialize_client()
-
-    def _handle_login_and_retry(self):
-        """Logs in, saves cookies, and retries operations."""
-        self.login()
-        self._initialize_client()
+        except WebDriverException as e:
+            print(f"Error: {e}")
 
     def _configure_chrome(self) -> Options:
         """Configure chrome options to run in headless mode."""
@@ -182,7 +165,6 @@ class CargaMaquinaClient:
             login_button = self.driver.find_element(by=By.NAME, value="yt0")
             login_button.click()
             self._save_cookies()
-
         except TimeoutException as e:
             print(f"Timeout: {e}")
         except WebDriverException as e:
@@ -207,7 +189,6 @@ class CargaMaquinaClient:
             nfe_view.click()
 
             html: str = self.driver.page_source
-
             return html
 
         except TimeoutException as e:
@@ -219,7 +200,6 @@ class CargaMaquinaClient:
 
     def get_nfe_data(self, html: str) -> str:
         """Get data from HTML and save it to a JSON format"""
-
         soup = BeautifulSoup(html, "html.parser")
         nfe_number: int = int(
             soup.find("input", {"id": "FaturamentoGrid_0_observacao"})
@@ -227,8 +207,7 @@ class CargaMaquinaClient:
             .split("-")[-1]
             .strip()
         )
-
-        supplier_name = (
+        supplier_name: str = (
             soup.find("span", {"class": "select2-chosen"}).text.strip().split(" ")[0]
         )
         mp_table = soup.find_all("table")[1]
@@ -250,24 +229,32 @@ class CargaMaquinaClient:
                     order=order,
                 )
             )
-        nfe_data = NFeData(
+        nfe_data: NFeData = NFeData(
             nfe_number=nfe_number, supplier_name=supplier_name, orders=orders
         )
-        codes = [order.code for order in nfe_data.orders]
-        print(codes)
-        pending_materials = self.get_requested_materials(codes)
-
+        codes: list[str] = [order.code for order in nfe_data.orders]
+        pending_materials: dict = self.get_requested_materials(codes)
 
         for material in pending_materials["pending_materials"]:
             nfe_data.pending_materials.append(material)
 
-        nfe_data.to_json()
+        # Iterate over pending_materials and subtract qty from orders
+        for pending in nfe_data.pending_materials:
+            pending_code: str = pending["code"]
+            pending_qty: float = pending["pending_qty"]
+            for order in nfe_data.orders:
+                if order.code == pending_code:
+                    while pending_qty > order.qty:
+                        pending_qty -= 1
+                    order.qty -= pending_qty
+                    pending["qty"] = pending_qty
 
+        nfe_data.to_json()
         return nfe_data
 
     def get_requested_materials(self, nfe_material_code: List[str]):
         "Get the data of pending materials in production orders on CargaMaquina"
-        params = {
+        params: dict[str, str] = {
             "Pedido[_nomeMaterial]": "",
             "Pedido[_solicitante]": "",
             "Pedido[status_id]": "",
@@ -292,7 +279,7 @@ class CargaMaquinaClient:
             soup = BeautifulSoup(response.content, "html.parser")
 
             materials: List[Material] = []
-            trs = soup.find_all("tr")[1:]
+            trs: list = soup.find_all("tr")[1:]
             for tr in trs:
                 creation_date: dt = dt.strptime(
                     tr.find_all("td")[0].text.strip(), "%d/%m/%y"
@@ -300,7 +287,9 @@ class CargaMaquinaClient:
                 code: str = tr.find_all("td")[1].text.strip()
                 op_number: str = str(tr.find_all("td")[3].text.strip())
                 product: str = tr.find_all("td")[4].text.strip()
-                pending_qty: str | float = tr.find_all("td")[7].text.strip().split(" ")[0]
+                pending_qty: str | float = (
+                    tr.find_all("td")[7].text.strip().split(" ")[0]
+                )
                 unit_type: str = tr.find_all("td")[7].text.strip().split(" ")[-1]
 
                 if (creation_date.year < self.today.year) or (unit_type == "mt"):
@@ -322,10 +311,10 @@ class CargaMaquinaClient:
                         pending_qty=pending_qty,
                     )
                 )
-
-            pending_materials = PendingMaterials(pending_materials=materials)
+            pending_materials: PendingMaterials = PendingMaterials(
+                pending_materials=materials
+            )
             data: dict = pending_materials.to_json()
-
             return data
 
         except ValueError as e:

@@ -1,4 +1,4 @@
-""" Print labels from a list of file paths """
+""" Module to print labels from a list of file paths on a Default Printer"""
 
 import os
 import win32api
@@ -23,4 +23,4 @@ def print_labels(file_paths: list[str]) -> None:
 
 
 if __name__ == "__main__":
-    print_labels(["./pending_labels.pdf", "./stock_labels.pdf"])
+    print_labels(["./tmp/pending_labels.pdf", "./tmp/stock_labels.pdf"])

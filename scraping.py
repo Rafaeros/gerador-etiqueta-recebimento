@@ -44,7 +44,7 @@ class PendingMaterials:
 
     def to_json(self) -> dict:
         """Convert to json"""
-        with open("pending_materials.json", "w", encoding="utf-8") as f:
+        with open("./tmp/pending_materials.json", "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=4)
 
         return self.to_dict()
@@ -78,7 +78,7 @@ class NFeData:
 
     def to_json(self) -> str:
         """Convert to json"""
-        with open("nfe_data.json", "w", encoding="utf-8") as f:
+        with open("./tmp/nfe_data.json", "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=4)
 
         return json.dumps(self.to_dict(), ensure_ascii=False, indent=4)
@@ -118,24 +118,24 @@ class CargaMaquinaClient:
         """Save cookies to a JSON file"""
         self.selenium_cookies = self.driver.get_cookies()
 
-        with open("cookies.json", "w", encoding="utf-8") as f:
+        with open("./tmp/cookies.json", "w", encoding="utf-8") as f:
             json.dump(self.selenium_cookies, f, ensure_ascii=False, indent=4)
 
         self.requests_cookies = {
             cookie["name"]: cookie["value"] for cookie in self.selenium_cookies
         }
-        with open("requests_cookies.json", "w", encoding="utf-8") as f:
+        with open("./tmp/requests_cookies.json", "w", encoding="utf-8") as f:
             json.dump(self.requests_cookies, f, ensure_ascii=False, indent=4)
 
     def _load_cookies(self):
         """Load cookies from a JSON file"""
         if "cookies.json" in os.listdir():
-            with open("cookies.json", "r", encoding="utf-8") as file:
+            with open("./tmp/cookies.json", "r", encoding="utf-8") as file:
                 self.selenium_cookies = json.load(file)
         else:
             raise FileNotFoundError
         if "requests_cookies.json" in os.listdir():
-            with open("requests_cookies.json", "r", encoding="utf-8") as file:
+            with open("./tmp/requests_cookies.json", "r", encoding="utf-8") as file:
                 self.requests_cookies = json.load(file)
         else:
             raise FileNotFoundError
@@ -266,7 +266,7 @@ class CargaMaquinaClient:
             "Pedido[status_id]": "",
             "Pedido[situacao]": "TODAS",
             "Pedido[_qtdeFornecida]": "Parcialmente",
-            "Pedido[_inicioCriacao]": "01/0/2024",
+            "Pedido[_inicioCriacao]": "01/01/2024",
             "Pedido[_fimCriacao]": "",
             "pageSize": "20",
         }
@@ -326,8 +326,8 @@ class CargaMaquinaClient:
         except ValueError as e:
             print(f"Error: {e}")
         finally:
-            os.remove("cookies.json")
-            os.remove("requests_cookies.json")
+            os.remove("./tmp/cookies.json")
+            os.remove("./tmp/requests_cookies.json")
 
 
 if __name__ == "__main__":

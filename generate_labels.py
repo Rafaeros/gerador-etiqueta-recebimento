@@ -82,7 +82,7 @@ def draw_text(
 def generate_pending_materials_labels(data: dict):
     """Generate and print labels from a json file"""
 
-    pdf = canvas.Canvas("pending_labels.pdf", pagesize=(WIDTH, HEIGHT))
+    pdf = canvas.Canvas("./tmp/pending_labels.pdf", pagesize=(WIDTH, HEIGHT))
     rectangle_x = WIDTH - 10 * mm
 
     if data["pending_materials"] == []:
@@ -141,7 +141,7 @@ def generate_pending_materials_labels(data: dict):
 def generate_stock_labels(data: dict):
     """Generate and print labels from a json file"""
 
-    pdf = canvas.Canvas("stock_labels.pdf", pagesize=(WIDTH, HEIGHT))
+    pdf = canvas.Canvas("./tmp/stock_labels.pdf", pagesize=(WIDTH, HEIGHT))
 
     date: str = data["date"]
     nfe: int = data["nfe_number"]
@@ -236,7 +236,7 @@ def generate_stock_labels(data: dict):
 def generate_nfe_labels():
     """Generate and print labels from a json file"""
 
-    with open("nfe_data.json", "r", encoding="utf-8") as file:
+    with open("./tmp/nfe_data.json", "r", encoding="utf-8") as file:
         data = json.load(file)
         generate_pending_materials_labels(data)
         generate_stock_labels(data)

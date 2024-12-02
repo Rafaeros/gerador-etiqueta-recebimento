@@ -237,6 +237,11 @@ class CargaMaquinaClient:
         )
         codes: list[str] = [order.code for order in nfe_data.orders]
         pending_materials: dict = self.get_requested_materials(codes)
+        # Sort pending materials by creation date
+        pending_materials["pending_materials"] = sorted(
+            pending_materials["pending_materials"],
+            key=lambda x: dt.strptime(x["creation_date"], "%d/%m/%y").strftime("%d/%m/%y"),
+        )
 
         for material in pending_materials["pending_materials"]:
             nfe_data.pending_materials.append(material)

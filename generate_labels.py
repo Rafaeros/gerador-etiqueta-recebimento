@@ -94,7 +94,7 @@ def generate_stock_labels(data: dict):
     for order in data["orders"]:
         for _ in range(2):
             pdf.setFillColor(black)
-            pdf.rect(0, HEIGHT - 40*mm, width=WIDTH, height=10 * mm, stroke=0, fill=1)
+            pdf.rect(0, HEIGHT - 40 * mm, width=WIDTH, height=10 * mm, stroke=0, fill=1)
             draw_text(
                 pdf,
                 MARGIN + 10 * mm - MARGIN,
@@ -119,7 +119,13 @@ def generate_stock_labels(data: dict):
                 pdf, HEIGHT - 37 * mm, order["code"], max_width=85 * mm, font_size=15
             )
             pdf.setFillColor(black)
-            draw_text(pdf, HEIGHT - 45 * mm, order["description"], max_width=80 * mm, font_size=10)
+            draw_text(
+                pdf,
+                HEIGHT - 45 * mm,
+                order["description"],
+                max_width=80 * mm,
+                font_size=10,
+            )
             draw_text(
                 pdf,
                 MARGIN,
@@ -138,6 +144,7 @@ def generate_nfe_labels():
         data = json.load(file)
         generate_pending_materials_labels(data)
         generate_stock_labels(data)
+
 
 if __name__ == "__main__":
     generate_nfe_labels()

@@ -102,7 +102,6 @@ class CargaMaquinaClient:
     def _initialize_client(self):
         try:
             self.login()
-            self.get_nfe_data(self.nfe_data_scraping())
         except WebDriverException as e:
             print(f"Error: {e}")
 
@@ -171,11 +170,11 @@ class CargaMaquinaClient:
         except WebDriverException as e:
             print(f"Error: {e}")
 
-    def nfe_data_scraping(self) -> str:
+    def nfe_data_scraping(self, negociation_id: str) -> None:
         """Scraping NFE data"""
         try:
             self.driver.get(
-                "https://app.cargamaquina.com.br/compra?Compra%5Bnegociacao%5D=171778"
+                f"https://app.cargamaquina.com.br/compra?Compra%5Bnegociacao%5D={negociation_id}"
             )
             nfe_checkbox = WebDriverWait(self.driver, 20).until(
                 EC.presence_of_all_elements_located(
@@ -190,7 +189,7 @@ class CargaMaquinaClient:
             nfe_view.click()
 
             html: str = self.driver.page_source
-            return html
+            self.get_nfe_data(html)
 
         except TimeoutException as e:
             print(f"Timeout: {e}")

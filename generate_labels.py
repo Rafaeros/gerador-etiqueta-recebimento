@@ -1,6 +1,7 @@
 """Module to generate and print labels from a json file"""
 
 import json
+import qrcode
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import mm
 from reportlab.lib.colors import white, black
@@ -152,6 +153,9 @@ def generate_stock_labels(data: dict):
         if order["qty"] == 0:
             continue
 
+        qr = qrcode.make(f"{order["code"]};{int(order["qty"])}")
+        qr.save("./tmp/qr-code.png")
+
         for _ in range(2):
             pdf.setFillColor(black)
             pdf.rect(0, HEIGHT - 40 * mm, width=WIDTH, height=10 * mm, stroke=0, fill=1)
@@ -185,6 +189,13 @@ def generate_stock_labels(data: dict):
                 max_width=85 * mm,
                 font_name="Arial-Bold",
                 font_size=11,
+            )
+            pdf.drawImage(
+                "./tmp/qr-code.png",
+                70 * mm,
+                HEIGHT - 17 * mm,
+                width=10 * mm,
+                height=10 * mm,
             )
             draw_text(
                 pdf,

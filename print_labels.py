@@ -1,8 +1,8 @@
 """ Print labels from a list of file paths """
 
+import os
 import win32api
 import win32print
-
 
 def print_labels(file_paths: list[str]) -> None:
     """Print labels from a list of file paths"""
@@ -12,7 +12,8 @@ def print_labels(file_paths: list[str]) -> None:
 
     try:
         for file_path in file_paths:
-            win32api.ShellExecute(0, "print", file_path, None, ".", 0)
+            abs_path = os.path.abspath(file_path)
+            win32api.ShellExecute(0, "print", abs_path, None, ".", 0)
             return
     except FileNotFoundError:
         print("Arquivo nao encontrado")

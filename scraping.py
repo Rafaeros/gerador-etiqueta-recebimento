@@ -247,10 +247,13 @@ class CargaMaquinaClient:
             pending_qty: float = pending["pending_qty"]
             for order in nfe_data.orders:
                 if order.code == pending_code:
+                    if order.qty == 0:
+                        pending["pending_qty"] = 0
+                        return
                     while pending_qty > order.qty:
                         pending_qty -= 1
                     order.qty -= pending_qty
-                    pending["qty"] = pending_qty
+                    pending["pending_qty"] = pending_qty
 
         nfe_data.to_json()
         return nfe_data
@@ -329,3 +332,4 @@ class CargaMaquinaClient:
 
 if __name__ == "__main__":
     client = CargaMaquinaClient(username="your username", password="your password")
+    client.nfe_data_scraping(negociation_id="your negociation id")

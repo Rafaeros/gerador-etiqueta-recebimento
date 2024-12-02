@@ -66,6 +66,7 @@ class OrderData:
 class NFeData:
     """Dataclass to represent an NFe and generate a JSON file to generate labels"""
 
+    date: str
     nfe_number: int
     supplier_name: str
     orders: List[OrderData] = field(default_factory=list)
@@ -93,7 +94,7 @@ class CargaMaquinaClient:
     def __init__(self, username: str, password: str):
         self.username = username
         self.password = password
-        self.driver = webdriver.Chrome(options=self._configure_chrome())
+        self.driver = webdriver.Chrome()
         self.requests_cookies: dict = {}
         self.selenium_cookies: dict = {}
         self._initialize_client()
@@ -174,7 +175,7 @@ class CargaMaquinaClient:
         """Scraping NFE data"""
         try:
             self.driver.get(
-                "https://app.cargamaquina.com.br/compra?Compra%5Bnegociacao%5D=171961"
+                "https://app.cargamaquina.com.br/compra?Compra%5Bnegociacao%5D=171778"
             )
             nfe_checkbox = WebDriverWait(self.driver, 20).until(
                 EC.presence_of_all_elements_located(
@@ -230,7 +231,10 @@ class CargaMaquinaClient:
                 )
             )
         nfe_data: NFeData = NFeData(
-            nfe_number=nfe_number, supplier_name=supplier_name, orders=orders
+            date=dt.now().strftime("%d/%m/%Y"),
+            nfe_number=nfe_number,
+            supplier_name=supplier_name,
+            orders=orders,
         )
         codes: list[str] = [order.code for order in nfe_data.orders]
         pending_materials: dict = self.get_requested_materials(codes)

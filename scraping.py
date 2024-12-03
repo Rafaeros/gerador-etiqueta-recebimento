@@ -44,7 +44,7 @@ class PendingMaterials:
 
     def to_json(self) -> dict:
         """Convert to json"""
-        with open("pending_materials.json", "w", encoding="utf-8") as f:
+        with open("./tmp/pending_materials.json", "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=4)
 
         return self.to_dict()
@@ -78,7 +78,7 @@ class NFeData:
 
     def to_json(self) -> str:
         """Convert to json"""
-        with open("nfe_data.json", "w", encoding="utf-8") as f:
+        with open("./tmp/nfe_data.json", "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=4)
 
         return json.dumps(self.to_dict(), ensure_ascii=False, indent=4)
@@ -118,24 +118,24 @@ class CargaMaquinaClient:
         """Save cookies to a JSON file"""
         self.selenium_cookies = self.driver.get_cookies()
 
-        with open("cookies.json", "w", encoding="utf-8") as f:
+        with open("./tmp/cookies.json", "w", encoding="utf-8") as f:
             json.dump(self.selenium_cookies, f, ensure_ascii=False, indent=4)
 
         self.requests_cookies = {
             cookie["name"]: cookie["value"] for cookie in self.selenium_cookies
         }
-        with open("requests_cookies.json", "w", encoding="utf-8") as f:
+        with open("./tmp/requests_cookies.json", "w", encoding="utf-8") as f:
             json.dump(self.requests_cookies, f, ensure_ascii=False, indent=4)
 
     def _load_cookies(self):
         """Load cookies from a JSON file"""
         if "cookies.json" in os.listdir():
-            with open("cookies.json", "r", encoding="utf-8") as file:
+            with open("./tmp/cookies.json", "r", encoding="utf-8") as file:
                 self.selenium_cookies = json.load(file)
         else:
             raise FileNotFoundError
         if "requests_cookies.json" in os.listdir():
-            with open("requests_cookies.json", "r", encoding="utf-8") as file:
+            with open("./tmp/requests_cookies.json", "r", encoding="utf-8") as file:
                 self.requests_cookies = json.load(file)
         else:
             raise FileNotFoundError
@@ -237,6 +237,11 @@ class CargaMaquinaClient:
         )
         codes: list[str] = [order.code for order in nfe_data.orders]
         pending_materials: dict = self.get_requested_materials(codes)
+        # Sort pending materials by creation date
+        pending_materials["pending_materials"] = sorted(
+            pending_materials["pending_materials"],
+            key=lambda x: dt.strptime(x["creation_date"], "%d/%m/%y").strftime("%d/%m/%y"),
+        )
 
         for material in pending_materials["pending_materials"]:
             nfe_data.pending_materials.append(material)
@@ -247,10 +252,13 @@ class CargaMaquinaClient:
             pending_qty: float = pending["pending_qty"]
             for order in nfe_data.orders:
                 if order.code == pending_code:
+                    if order.qty == 0:
+                        pending["pending_qty"] = 0
+                        return
                     while pending_qty > order.qty:
                         pending_qty -= 1
                     order.qty -= pending_qty
-                    pending["qty"] = pending_qty
+                    pending["pending_qty"] = pending_qty
 
         nfe_data.to_json()
         return nfe_data
@@ -263,7 +271,7 @@ class CargaMaquinaClient:
             "Pedido[status_id]": "",
             "Pedido[situacao]": "TODAS",
             "Pedido[_qtdeFornecida]": "Parcialmente",
-            "Pedido[_inicioCriacao]": "01/0/2024",
+            "Pedido[_inicioCriacao]": "01/01/2024",
             "Pedido[_fimCriacao]": "",
             "pageSize": "20",
         }
@@ -323,9 +331,10 @@ class CargaMaquinaClient:
         except ValueError as e:
             print(f"Error: {e}")
         finally:
-            os.remove("cookies.json")
-            os.remove("requests_cookies.json")
+            os.remove("./tmp/cookies.json")
+            os.remove("./tmp/requests_cookies.json")
 
 
 if __name__ == "__main__":
     client = CargaMaquinaClient(username="your username", password="your password")
+    client.nfe_data_scraping(negociation_id="your negociation id")

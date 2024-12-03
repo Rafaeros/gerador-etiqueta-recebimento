@@ -10,7 +10,6 @@ def print_labels(file_paths: list[str]) -> None:
 
     printer_name = win32print.GetDefaultPrinter()
     printer = win32print.OpenPrinter(printer_name)
-    print(file_paths)
     try:
         for file_path in file_paths:
             print(file_path)

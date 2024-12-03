@@ -249,9 +249,9 @@ def generate_nfe_labels():
 
     with open("./tmp/nfe_data.json", "r", encoding="utf-8") as file:
         data = json.load(file)
-        generate_pending_materials_labels(data)
+        if data["pending_materials"] != []:
+            generate_pending_materials_labels(data)
         generate_stock_labels(data)
-
 
 if __name__ == "__main__":
     generate_nfe_labels()

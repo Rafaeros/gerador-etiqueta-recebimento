@@ -12,7 +12,6 @@ def print_labels(file_paths: list[str]) -> None:
     printer = win32print.OpenPrinter(printer_name)
     try:
         for file_path in file_paths:
-            print(file_path)
             if not os.path.exists(file_path):
                 continue
             abs_path = os.path.abspath(file_path)
@@ -23,6 +22,8 @@ def print_labels(file_paths: list[str]) -> None:
         return
     finally:
         win32print.ClosePrinter(printer)
+        for file_path in file_paths:
+            os.remove(file_path)
 
 
 if __name__ == "__main__":

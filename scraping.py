@@ -240,7 +240,9 @@ class CargaMaquinaClient:
         # Sort pending materials by creation date
         pending_materials["pending_materials"] = sorted(
             pending_materials["pending_materials"],
-            key=lambda x: dt.strptime(x["creation_date"], "%d/%m/%y").strftime("%d/%m/%y"),
+            key=lambda x: dt.strptime(x["creation_date"], "%d/%m/%y").strftime(
+                "%d/%m/%y"
+            ),
         )
 
         for material in pending_materials["pending_materials"]:
@@ -254,11 +256,22 @@ class CargaMaquinaClient:
                 if order.code == pending_code:
                     if order.qty == 0:
                         pending["pending_qty"] = 0
+                        nfe_data.orders.remove(order)
+                        nfe_data.pending_materials.remove(pending)
                         return
                     while pending_qty > order.qty:
                         pending_qty -= 1
                     order.qty -= pending_qty
                     pending["pending_qty"] = pending_qty
+
+        for order in nfe_data.orders:
+            if order.qty == 0:
+                nfe_data.orders.remove(order)
+
+        if not nfe_data.pending_materials == []:
+            for pending in nfe_data.pending_materials:
+                if pending["pending_qty"] == 0:
+                    nfe_data.pending_materials.remove(pending)
 
         nfe_data.to_json()
         return nfe_data

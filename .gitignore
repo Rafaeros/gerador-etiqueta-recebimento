@@ -1,3 +1,5 @@
 *.json
 *.pdf
 tmp
+output
+__pycache__

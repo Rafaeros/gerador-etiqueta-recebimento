@@ -235,57 +235,60 @@ class CargaMaquinaClient:
             supplier_name=supplier_name,
             orders=orders,
         )
+        # Getting pending materials by codes in Nfe data scraping and sorting by crescent date.
         codes: list[str] = [order.code for order in nfe_data.orders]
         pending_materials: dict = self.get_requested_materials(codes)
-        # Sort pending materials by creation date
-        pending_materials["pending_materials"] = sorted(
-            pending_materials["pending_materials"],
-            key=lambda x: dt.strptime(x["creation_date"], "%d/%m/%y").strftime(
-                "%d/%m/%y"
-            ),
+        nfe_data.pending_materials = pending_materials["pending_materials"]
+        nfe_data.pending_materials = sorted(
+            nfe_data.pending_materials,
+            key=lambda x: dt.strptime(x["creation_date"], "%d/%m/%y"),
         )
 
-        for material in pending_materials["pending_materials"]:
-            nfe_data.pending_materials.append(material)
+        if not nfe_data.pending_materials:
+            return nfe_data
 
-        # Iterate over pending_materials and subtract qty from orders
-        for pending in nfe_data.pending_materials:
-            pending_code: str = pending["code"]
-            pending_qty: float = pending["pending_qty"]
+        for pending_material in nfe_data.pending_materials:
             for order in nfe_data.orders:
-                if order.code == pending_code:
+                if pending_material["code"] == order.code:
+                    # Order qty validation
                     if order.qty == 0:
-                        pending["pending_qty"] = 0
-                        nfe_data.orders.remove(order)
-                        nfe_data.pending_materials.remove(pending)
-                        return
-                    while pending_qty > order.qty:
-                        pending_qty -= 1
-                    order.qty -= pending_qty
-                    pending["pending_qty"] = pending_qty
+                        pending_material["pending_qty"] = 0
+
+                    # Pending material qty validation
+                    if pending_material["pending_qty"] == order.qty:
+                        order.qty -= pending_material["pending_qty"]
+                        pending_material["pending_qty"] = 0
+                    elif pending_material["pending_qty"] < order.qty:
+                        order.qty -= pending_material["pending_qty"]
+                    elif pending_material["pending_qty"] > order.qty:
+                        while pending_material["pending_qty"] != order.qty:
+                            pending_material["pending_qty"] -= 1
+                        order.qty -= pending_material["pending_qty"]
+                        pending_material["pending_qty"] = pending_material[
+                            "pending_qty"
+                        ]
 
         for order in nfe_data.orders:
             if order.qty == 0:
                 nfe_data.orders.remove(order)
 
-        if not nfe_data.pending_materials == []:
-            for pending in nfe_data.pending_materials:
-                if pending["pending_qty"] == 0:
-                    nfe_data.pending_materials.remove(pending)
+        for pending_material in nfe_data.pending_materials:
+            if pending_material["pending_qty"] == 0:
+                nfe_data.pending_materials.remove(pending_material)
 
         nfe_data.to_json()
         return nfe_data
 
     def get_requested_materials(self, nfe_material_code: List[str]):
-        "Get the data of pending materials in production orders on CargaMaquina"
+        """Get the data of pending materials in production orders on CargaMaquina"""
         params: dict[str, str] = {
             "Pedido[_nomeMaterial]": "",
             "Pedido[_solicitante]": "",
             "Pedido[status_id]": "",
             "Pedido[situacao]": "TODAS",
             "Pedido[_qtdeFornecida]": "Parcialmente",
-            "Pedido[_inicioCriacao]": "01/01/2024",
-            "Pedido[_fimCriacao]": "",
+            "Pedido[_inicioCriacao]": f"01/01/{self.today.year}",
+            "Pedido[_fimCriacao]": f"25/12/{self.today.year}",
             "pageSize": "20",
         }
 
@@ -338,7 +341,7 @@ class CargaMaquinaClient:
             pending_materials: PendingMaterials = PendingMaterials(
                 pending_materials=materials
             )
-            data: dict = pending_materials.to_json()
+            data: dict = pending_materials.to_dict()
             return data
 
         except ValueError as e:
@@ -350,4 +353,4 @@ class CargaMaquinaClient:
 
 if __name__ == "__main__":
     client = CargaMaquinaClient(username="your username", password="your password")
-    client.nfe_data_scraping(negociation_id="your negociation id")
+    client.nfe_data_scraping(negociation_id="171961")

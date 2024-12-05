@@ -53,13 +53,13 @@ class PendingMaterials:
 @dataclass
 class OrderData:
     """Dataclass to represent an order"""
-
+    address: str
+    order: int
     code: str
     description: str
     qty: float
     qty_total: float
     unit_type: str
-    order: int
 
 
 @dataclass
@@ -214,19 +214,21 @@ class CargaMaquinaClient:
         orders: List[OrderData] = []
         trs = mp_table.find_all("tr")[1:]
         for tr in trs:
-            code: str = tr.find_all("td")[3].text.strip()
-            description: str = tr.find_all("td")[4].text.strip()
-            qty: float = tr.find_all("td")[7].text.strip().split(" ")[0]
-            unit_type: str = tr.find_all("td")[7].text.strip().split(" ")[-1].upper()
-            order: int = tr.find_all("td")[16].text.strip()
+            order: int = tr.find_all("td")[3].text.strip()
+            address: str = tr.find_all("td")[4].text.strip()
+            code: str = tr.find_all("td")[5].text.strip()
+            description: str = tr.find_all("td")[6].text.strip()
+            qty: float = tr.find_all("td")[8].text.strip().split(" ")[0]
+            unit_type: str = tr.find_all("td")[8].text.strip().split(" ")[-1].upper()
             orders.append(
                 OrderData(
+                    address=address,
+                    order=order,
                     code=code,
                     description=description,
                     qty=float(qty),
                     qty_total=float(qty),
-                    unit_type=unit_type,
-                    order=order,
+                    unit_type=unit_type
                 )
             )
         nfe_data: NFeData = NFeData(

@@ -10,21 +10,22 @@ def print_labels(file_paths: list[str]) -> None:
 
     printer_name = win32print.GetDefaultPrinter()
     printer = win32print.OpenPrinter(printer_name)
-    try:
-        for file_path in file_paths:
+    for file_path in file_paths:
+        abs_path = os.path.abspath(file_path)
+        try:
             if not os.path.exists(file_path):
                 continue
-            abs_path = os.path.abspath(file_path)
             time.sleep(2)
             win32api.ShellExecute(0, "print", abs_path, None, ".", 0)
-    except FileNotFoundError:
-        print("Arquivo nao encontrado")
-        return
-    finally:
-        win32print.ClosePrinter(printer)
-        for file_path in file_paths:
+        except FileNotFoundError:
+            print("Arquivo nao encontrado")
+            return
+        finally:
+            win32print.ClosePrinter(printer)
+            time.sleep(3)
             os.remove(file_path)
 
+    print("Etiquetas impressas com sucesso")
 
 if __name__ == "__main__":
     print_labels(["./tmp/pending_labels.pdf", "./tmp/stock_labels.pdf"])

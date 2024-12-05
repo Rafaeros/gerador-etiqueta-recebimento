@@ -182,6 +182,18 @@ def generate_stock_labels(data: dict):
                 font_name="Arial-Bold",
                 font_size=13,
             )
+
+            draw_text(
+                pdf,
+                HEIGHT - 6 * mm,
+                f"{order["address"]}",
+                x=70*mm,
+                max_width=15*mm,
+                font_name="Arial",
+                font_size=5,
+                wrap=True,
+            )
+
             draw_text(
                 pdf,
                 HEIGHT - 15 * mm,
@@ -192,8 +204,8 @@ def generate_stock_labels(data: dict):
             )
             pdf.drawImage(
                 "./tmp/qr-code.png",
-                70 * mm,
-                HEIGHT - 17 * mm,
+                MARGIN,
+                3*mm,
                 width=10 * mm,
                 height=10 * mm,
             )
@@ -252,6 +264,7 @@ def generate_nfe_labels():
         if data["pending_materials"] != []:
             generate_pending_materials_labels(data)
         generate_stock_labels(data)
+
 
 if __name__ == "__main__":
     generate_nfe_labels()

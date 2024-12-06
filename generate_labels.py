@@ -168,11 +168,12 @@ def generate_stock_labels(data: dict, qr_code: bool):
             )
 
             pdf.drawImage(
-                "./assets/img/fk-logo.png",
+                "./assets/img/fk-logo-sem-fundo.jpeg",
                 MARGIN,
                 HEIGHT - 17 * mm,
                 width=10 * mm,
                 height=10 * mm,
+                mask="auto",
             )
 
             draw_text(

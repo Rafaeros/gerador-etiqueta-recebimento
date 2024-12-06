@@ -5,6 +5,7 @@ import time
 import win32api
 import win32print
 
+
 def print_labels(file_paths: list[str]) -> None:
     """Print labels from a list of file paths"""
 
@@ -15,17 +16,21 @@ def print_labels(file_paths: list[str]) -> None:
         try:
             if not os.path.exists(file_path):
                 continue
-            time.sleep(2)
             win32api.ShellExecute(0, "print", abs_path, None, ".", 0)
+            time.sleep(3)
         except FileNotFoundError:
             print("Arquivo nao encontrado")
             return
         finally:
             win32print.ClosePrinter(printer)
-            time.sleep(3)
-            os.remove(file_path)
 
     print("Etiquetas impressas com sucesso")
+
+    for file_path in file_paths:
+        if not os.path.exists(file_path):
+            continue
+        os.remove(file_path)
+
 
 if __name__ == "__main__":
     print_labels(["./tmp/pending_labels.pdf", "./tmp/stock_labels.pdf"])

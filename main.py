@@ -16,7 +16,8 @@ def main() -> None:
     username: str = input("Usuário: ")
     password: str = getpass(prompt="Senha: ")
     negociation_id: str = input("ID da Negociação: ")
-    qr_code: str = input("Gerar QR Code? (S/N): ").lower() == "s"
+    qr_code: str = input("Gerar QR Code? (S/N): ").lower()
+    print(qr_code)
     client = CargaMaquinaClient(username=username, password=password)
     client.nfe_data_scraping(negociation_id)
     generate_nfe_labels(qr_code)

@@ -139,7 +139,7 @@ def generate_pending_materials_labels(data: dict):
     pdf.save()
 
 
-def generate_stock_labels(data: dict):
+def generate_stock_labels(data: dict, qr_code: bool):
     """Generate and print labels from a json file"""
 
     pdf = canvas.Canvas("./tmp/stock_labels.pdf", pagesize=(WIDTH, HEIGHT))
@@ -153,8 +153,9 @@ def generate_stock_labels(data: dict):
         if order["qty"] == 0:
             continue
 
-        qr = qrcode.make(f"{order["code"]};{int(order["qty"])}")
-        qr.save("./tmp/qr-code.png")
+        if qr_code:
+            qr = qrcode.make(f"{order["code"]};{int(order["qty"])}")
+            qr.save("./tmp/qr-code.png")
 
         for _ in range(2):
             pdf.setFillColor(black)
@@ -202,13 +203,14 @@ def generate_stock_labels(data: dict):
                 font_name="Arial-Bold",
                 font_size=11,
             )
-            pdf.drawImage(
-                "./tmp/qr-code.png",
-                MARGIN,
-                3*mm,
-                width=10 * mm,
-                height=10 * mm,
-            )
+            if qr_code:
+                pdf.drawImage(
+                    "./tmp/qr-code.png",
+                    MARGIN,
+                    3*mm,
+                    width=10 * mm,
+                    height=10 * mm,
+                )
             draw_text(
                 pdf,
                 HEIGHT - 25 * mm,
@@ -256,15 +258,18 @@ def generate_stock_labels(data: dict):
     pdf.save()
 
 
-def generate_nfe_labels():
+def generate_nfe_labels(qr_code: str):
     """Generate and print labels from a json file"""
 
     with open("./tmp/nfe_data.json", "r", encoding="utf-8") as file:
         data = json.load(file)
         if data["pending_materials"] != []:
             generate_pending_materials_labels(data)
-        generate_stock_labels(data)
+        if qr_code == "s":
+            generate_stock_labels(data, True)
+        else:
+            generate_stock_labels(data, False)
 
 
 if __name__ == "__main__":
-    generate_nfe_labels()
+    generate_nfe_labels("s")

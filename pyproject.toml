@@ -1,0 +1,14 @@
+[project]
+name = "gerador-etiqueta-recebimento"
+version = "0.1.1"
+description = "Project to generate labels for delivery receipt"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.13.3",
+    "pywin32>=308",
+    "qrcode>=8.0",
+    "reportlab>=4.3.1",
+    "requests>=2.32.3",
+    "selenium>=4.28.1",
+]

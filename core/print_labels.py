@@ -1,9 +1,12 @@
 """ Module to print labels from a list of file paths on a Default Printer"""
 
 import os
+import platform
 import time
-import win32api
-import win32print
+
+if platform.system() == "Windows":
+    import win32api
+    import win32print
 
 
 def print_labels(file_paths: list[str]) -> None:
@@ -21,6 +24,9 @@ def print_labels(file_paths: list[str]) -> None:
             time.sleep(3)
     except FileNotFoundError:
         print("Arquivo nao encontrado")
+        return
+    except win32api.error as e:
+        print(f"Erro ao imprimir: {e}")
         return
     finally:
         win32print.ClosePrinter(printer)

@@ -2,6 +2,7 @@
 
 import json
 import qrcode
+import pathlib
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import mm
 from reportlab.lib.colors import white, black
@@ -11,11 +12,18 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 WIDTH, HEIGHT = 85 * mm, 70 * mm
 MARGIN = 5 * mm
-ARIAL_FONT_PATH = "./assets/fonts/Arial.ttf"
-ARIAL_BD_FONT_PATH = "./assets/fonts/Arial-Bold.ttf"
+LOGO_PATH = pathlib.Path(__file__).parent / "assets/img/fk-logo-sem-fundo.jpeg"
 
-pdfmetrics.registerFont(TTFont("Arial", ARIAL_FONT_PATH))
-pdfmetrics.registerFont(TTFont("Arial-Bold", ARIAL_BD_FONT_PATH))
+TMP_FOLDER = pathlib.Path().parent / "tmp"
+TMP_FOLDER.mkdir(exist_ok=True)
+
+FONTS_PATH: pathlib.Path = pathlib.Path(__file__).parent / "assets/fonts"
+FONTS: list[TTFont] = [
+    TTFont("Arial", FONTS_PATH / "Arial.ttf"),
+    TTFont("Arial-Bold", FONTS_PATH / "Arial-Bold.ttf"),
+]
+for font in FONTS:
+    pdfmetrics.registerFont(font)
 
 
 def get_middle_x_coord(pdf, text: str, font_name, font_size) -> float:
@@ -83,7 +91,9 @@ def draw_text(
 def generate_pending_materials_labels(data: dict):
     """Generate and print labels from a json file"""
 
-    pdf = canvas.Canvas("./tmp/pending_labels.pdf", pagesize=(WIDTH, HEIGHT))
+    pdf = canvas.Canvas(
+        f"{TMP_FOLDER / 'pending_labels.pdf'}", pagesize=(WIDTH, HEIGHT)
+    )
     rectangle_x = WIDTH - 10 * mm
 
     if data["pending_materials"] == []:
@@ -142,7 +152,7 @@ def generate_pending_materials_labels(data: dict):
 def generate_stock_labels(data: dict, qr_code: bool):
     """Generate and print labels from a json file"""
 
-    pdf = canvas.Canvas("./tmp/stock_labels.pdf", pagesize=(WIDTH, HEIGHT))
+    pdf = canvas.Canvas(f"{TMP_FOLDER / 'stock_labels.pdf'}", pagesize=(WIDTH, HEIGHT))
 
     date: str = data["date"]
     nfe: int = data["nfe_number"]
@@ -168,7 +178,7 @@ def generate_stock_labels(data: dict, qr_code: bool):
             )
 
             pdf.drawImage(
-                "./assets/img/fk-logo-sem-fundo.jpeg",
+                LOGO_PATH,
                 MARGIN,
                 HEIGHT - 17 * mm,
                 width=10 * mm,
@@ -189,8 +199,8 @@ def generate_stock_labels(data: dict, qr_code: bool):
                 pdf,
                 HEIGHT - 6 * mm,
                 f"{order["address"]}",
-                x=70*mm,
-                max_width=15*mm,
+                x=70 * mm,
+                max_width=15 * mm,
                 font_name="Arial",
                 font_size=5,
                 wrap=True,
@@ -208,7 +218,7 @@ def generate_stock_labels(data: dict, qr_code: bool):
                 pdf.drawImage(
                     "./tmp/qr-code.png",
                     MARGIN,
-                    3*mm,
+                    3 * mm,
                     width=10 * mm,
                     height=10 * mm,
                 )
@@ -262,7 +272,7 @@ def generate_stock_labels(data: dict, qr_code: bool):
 def generate_nfe_labels(qr_code: str):
     """Generate and print labels from a json file"""
 
-    with open("./tmp/nfe_data.json", "r", encoding="utf-8") as file:
+    with open(f"{TMP_FOLDER / 'nfe_data.json'}", "r", encoding="utf-8") as file:
         data = json.load(file)
         if data["pending_materials"] != []:
             generate_pending_materials_labels(data)

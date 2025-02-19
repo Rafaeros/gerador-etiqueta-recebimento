@@ -247,32 +247,29 @@ class CargaMaquinaClient:
             key=lambda x: dt.strptime(x["creation_date"], "%d/%m/%y"),
         )
 
+        print(nfe_data.to_json())
+
         if nfe_data.pending_materials:
             for pending_material in nfe_data.pending_materials:
                 for order in nfe_data.orders:
                     if pending_material["code"] == order.code:
+                        print("Order qty:", order.qty)
+                        print("Pending material qty:", pending_material["pending_qty"])
                         # Order qty validation
                         if order.qty == 0:
                             pending_material["pending_qty"] = 0
 
                         # Pending material qty validation
-                        if pending_material["pending_qty"] == order.qty:
-                            order.qty -= pending_material["pending_qty"]
-                            pending_material["pending_qty"] = 0
-                        elif pending_material["pending_qty"] < order.qty:
-                            order.qty -= pending_material["pending_qty"]
-                        elif pending_material["pending_qty"] > order.qty:
-                            while pending_material["pending_qty"] != order.qty:
+                        if pending_material["pending_qty"] > order.qty:
+                            while pending_material["pending_qty"] > order.qty:
                                 pending_material["pending_qty"] -= 1
                             order.qty -= pending_material["pending_qty"]
-                            pending_material["pending_qty"] = pending_material[
-                                "pending_qty"
-                            ]
+                        elif pending_material["pending_qty"] < order.qty:
+                            order.qty -= pending_material["pending_qty"]
+                        elif pending_material["pending_qty"] == order.qty:
+                            order.qty -= pending_material["pending_qty"]
 
-            for pending_material in nfe_data.pending_materials:
-                if pending_material["pending_qty"] == 0:
-                    nfe_data.pending_materials.remove(pending_material)
-
+            nfe_data.pending_materials = [pending_material for pending_material in nfe_data.pending_materials if pending_material["pending_qty"] > 0]
         for order in nfe_data.orders:
             if order.qty == 0:
                 nfe_data.orders.remove(order)
@@ -314,7 +311,7 @@ class CargaMaquinaClient:
                 )
                 code: str = tr.find_all("td")[1].text.strip()
                 op_number: str = str(tr.find_all("td")[3].text.strip())
-                product: str = tr.find_all("td")[4].text.strip()
+                product: str = tr.find_all("td")[5].text.strip()
                 pending_qty: str | float = (
                     tr.find_all("td")[7].text.strip().split(" ")[0]
                 )

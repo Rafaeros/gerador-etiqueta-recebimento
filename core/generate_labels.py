@@ -115,6 +115,8 @@ def generate_pending_materials_labels(data: dict):
             stroke=0,
             fill=1,
         )
+        pdf.rect(5*mm, 5*mm, WIDTH-20*mm, 10*mm, stroke=0, fill=1)
+
         draw_text(
             pdf, HEIGHT - 15 * mm, material["op_number"], pending=True, font_size=18
         )
@@ -134,16 +136,15 @@ def generate_pending_materials_labels(data: dict):
             font_name="Arial",
             font_size=19.5,
         )
+        pdf.setFillColor(black)
         draw_text(
             pdf,
-            10 * mm,
+            8 * mm,
             f"QUANTIDADE: {int(material["pending_qty"])} UND",
             pending=True,
             font_name="Arial",
             font_size=10,
         )
-        pdf.setStrokeColor(white)
-        pdf.rect(5 * mm, 6 * mm, WIDTH - 20 * mm, 10 * mm, stroke=1, fill=0)
         pdf.showPage()
 
     pdf.save()
@@ -157,6 +158,9 @@ def generate_stock_labels(data: dict, qr_code: bool):
     date: str = data["date"]
     nfe: int = data["nfe_number"]
     supplier_name: str = data["supplier_name"]
+
+    if data["orders"] == []:
+        return
 
     for order in data["orders"]:
 

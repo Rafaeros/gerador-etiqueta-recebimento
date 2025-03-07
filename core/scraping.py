@@ -313,9 +313,9 @@ class CargaMaquinaClient:
                 op_number: str = str(tr.find_all("td")[3].text.strip())
                 product: str = tr.find_all("td")[5].text.strip()
                 pending_qty: str | float = (
-                    tr.find_all("td")[7].text.strip().split(" ")[0]
+                    tr.find_all("td")[8].text.strip().split(" ")[0]
                 )
-                unit_type: str = tr.find_all("td")[7].text.strip().split(" ")[-1]
+                unit_type: str = tr.find_all("td")[8].text.strip().split(" ")[-1]
 
                 if (creation_date.year < self.today.year) or (unit_type == "mt"):
                     continue

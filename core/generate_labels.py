@@ -1,8 +1,9 @@
 """Module to generate and print labels from a json file"""
 
 import json
-import qrcode
 import pathlib
+import qrcode
+from PIL import Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import mm
 from reportlab.lib.colors import white, black
@@ -12,7 +13,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 WIDTH, HEIGHT = 85 * mm, 70 * mm
 MARGIN = 5 * mm
-LOGO_PATH = pathlib.Path(__file__).parent / "assets/img/fk-logo-sem-fundo.jpeg"
+LOGO_PATH = pathlib.Path(__file__).parent / "assets/img/fk-logo.png"
 
 TMP_FOLDER = pathlib.Path().parent / "tmp"
 TMP_FOLDER.mkdir(exist_ok=True)
@@ -150,7 +151,7 @@ def generate_pending_materials_labels(data: dict):
     pdf.save()
 
 
-def generate_stock_labels(data: dict, qr_code: bool):
+def generate_stock_labels(data: dict):
     """Generate and print labels from a json file"""
 
     pdf = canvas.Canvas(f"{TMP_FOLDER / 'stock_labels.pdf'}", pagesize=(WIDTH, HEIGHT))
@@ -167,10 +168,29 @@ def generate_stock_labels(data: dict, qr_code: bool):
         if order["qty"] == 0:
             continue
 
-        if qr_code:
-            qr = qrcode.make(f"{order["code"]};{int(order["qty"])}")
-            qr.save("./tmp/qr-code.png")
+        # Generate QRCode
+        logo = Image.open(LOGO_PATH)
+        qr_size_mm = 15
+        qr_pixels = int(qr_size_mm * (300 / 25.4))
 
+        qr = qrcode.QRCode(
+            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            box_size=qr_pixels // 41,
+            border=1
+        )
+        qr.add_data(f"{order['code']};{int(order['qty'])}")
+        qr.make()
+
+        # Generate QRCode Image
+        qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+        qr_img = qr_img.resize((qr_pixels, qr_pixels), Image.Resampling.LANCZOS)
+        logo_size = int(qr_pixels * 0.3)
+        logo = logo.resize((logo_size, logo_size), Image.Resampling.LANCZOS)
+        pos = ((qr_img.size[0] - logo.size[0]) // 2, (qr_img.size[1] - logo.size[1]) // 2)
+        qr_img.paste(logo, pos)
+        qr_img.save("./tmp/qr-code.png")
+
+        # Generate Label
         for _ in range(2):
             pdf.setFillColor(black)
             pdf.rect(0, HEIGHT - 40 * mm, width=WIDTH, height=10 * mm, stroke=0, fill=1)
@@ -181,12 +201,13 @@ def generate_stock_labels(data: dict, qr_code: bool):
                 pdf, HEIGHT - MARGIN, date, MARGIN, max_width=80 * mm, font_size=10
             )
 
+            # QrCode with logo
             pdf.drawImage(
-                LOGO_PATH,
+                "./tmp/qr-code.png",
                 MARGIN,
-                HEIGHT - 17 * mm,
-                width=10 * mm,
-                height=10 * mm,
+                HEIGHT - 25 * mm,
+                width=15 * mm,
+                height=15 * mm,
                 mask="auto",
             )
 
@@ -203,7 +224,7 @@ def generate_stock_labels(data: dict, qr_code: bool):
                 pdf,
                 HEIGHT - 6 * mm,
                 f"{order["address"]}",
-                x=70 * mm,
+                x=65 * mm,
                 max_width=15 * mm,
                 font_name="Arial",
                 font_size=5,
@@ -218,14 +239,7 @@ def generate_stock_labels(data: dict, qr_code: bool):
                 font_name="Arial-Bold",
                 font_size=11,
             )
-            if qr_code:
-                pdf.drawImage(
-                    "./tmp/qr-code.png",
-                    MARGIN,
-                    3 * mm,
-                    width=10 * mm,
-                    height=10 * mm,
-                )
+
             draw_text(
                 pdf,
                 HEIGHT - 25 * mm,
@@ -273,18 +287,15 @@ def generate_stock_labels(data: dict, qr_code: bool):
     pdf.save()
 
 
-def generate_nfe_labels(qr_code: str):
+def generate_nfe_labels():
     """Generate and print labels from a json file"""
 
     with open(f"{TMP_FOLDER / 'nfe_data.json'}", "r", encoding="utf-8") as file:
         data = json.load(file)
         if data["pending_materials"] != []:
             generate_pending_materials_labels(data)
-        if qr_code == "s":
-            generate_stock_labels(data, True)
-        else:
-            generate_stock_labels(data, False)
+        generate_stock_labels(data)
 
 
 if __name__ == "__main__":
-    generate_nfe_labels("s")
+    generate_nfe_labels()

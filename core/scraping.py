@@ -141,6 +141,10 @@ class CargaMaquinaClient:
         else:
             raise FileNotFoundError
 
+
+    def close(self):
+        self.driver.quit()
+
     def login(self):
         """Login to carga maquina and get cookies for requests"""
         try:
@@ -196,8 +200,6 @@ class CargaMaquinaClient:
             print(f"Timeout: {e}")
         except WebDriverException as e:
             print(f"Error: {e}")
-        finally:
-            self.driver.quit()
 
     def get_nfe_data(self, html: str) -> str:
         """Get data from HTML and save it to a JSON format"""
@@ -344,9 +346,6 @@ class CargaMaquinaClient:
 
         except ValueError as e:
             print(f"Error: {e}")
-        finally:
-            os.remove("./tmp/cookies.json")
-            os.remove("./tmp/requests_cookies.json")
 
 
 if __name__ == "__main__":

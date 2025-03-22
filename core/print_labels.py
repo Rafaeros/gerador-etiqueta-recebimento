@@ -1,4 +1,4 @@
-""" Module to print labels from a list of file paths on a Default Printer"""
+"""Module to print labels from a list of file paths on a Default Printer"""
 
 import os
 import platform
@@ -14,7 +14,7 @@ def print_labels(file_paths: list[str]) -> None:
 
     printer_name = win32print.GetDefaultPrinter()
     printer = win32print.OpenPrinter(printer_name)
-    
+
     try:
         for file_path in file_paths:
             abs_path = os.path.abspath(file_path)
@@ -38,5 +38,6 @@ def print_labels(file_paths: list[str]) -> None:
             continue
         os.remove(file_path)
 
-if __name__ == "__main__":
+
+if __name__ == "_main_":
     print_labels(["./tmp/pending_labels.pdf", "./tmp/stock_labels.pdf"])

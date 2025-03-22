@@ -12,6 +12,9 @@ def main() -> None:
 
     if not os.path.exists("./tmp"):
         os.mkdir("./tmp")
+    print("Gerador de Etiquetas de Recebimento")
+    print("Feito por: Rafael Costa")
+    print("https://github.com/Rafaeros")
     username: str = input("Usuário: ")
     password: str = getpass(prompt="Senha: ")
     client = CargaMaquinaClient(username=username, password=password)

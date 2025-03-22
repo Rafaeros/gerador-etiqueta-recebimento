@@ -188,7 +188,8 @@ def generate_stock_labels(data: dict):
         logo = logo.resize((logo_size, logo_size), Image.Resampling.LANCZOS)
         pos = ((qr_img.size[0] - logo.size[0]) // 2, (qr_img.size[1] - logo.size[1]) // 2)
         qr_img.paste(logo, pos)
-        qr_img.save("./tmp/qr-code.png")
+        qr_code_path = f"./tmp/qr-code-{order['code']}.png"
+        qr_img.save(qr_code_path)
 
         # Generate Label
         for _ in range(2):
@@ -203,7 +204,7 @@ def generate_stock_labels(data: dict):
 
             # QrCode with logo
             pdf.drawImage(
-                "./tmp/qr-code.png",
+                qr_code_path,
                 MARGIN,
                 HEIGHT - 25 * mm,
                 width=15 * mm,

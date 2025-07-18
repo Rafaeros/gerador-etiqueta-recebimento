@@ -1,10 +1,10 @@
 """Module to generate and print labels from a json file"""
 
 import json
-import qrcode
 import pathlib
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import mm
+import qrcode
+from reportlab.pdfgen.canvas import Canvas
+from reportlab.lib.units import mm
 from reportlab.lib.colors import white, black
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -12,7 +12,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 WIDTH, HEIGHT = 85 * mm, 70 * mm
 MARGIN = 5 * mm
-LOGO_PATH = pathlib.Path(__file__).parent / "assets/img/fk-logo-sem-fundo.jpeg"
+LOGO_PATH = pathlib.Path(__file__).parent / "assets/img/lanx-logo-sem-fundo.jpeg"
 
 TMP_FOLDER = pathlib.Path().parent / "tmp"
 TMP_FOLDER.mkdir(exist_ok=True)
@@ -34,10 +34,10 @@ def get_middle_x_coord(pdf, text: str, font_name, font_size) -> float:
 
 
 def draw_text(
-    pdf: canvas,
+    pdf: Canvas,
     y: float,
     text: str,
-    x: float = None,
+    x: float = 0.0,
     max_width: float = 75 * mm,
     font_name: str = "Arial-Bold",
     font_size=22,
@@ -78,7 +78,7 @@ def draw_text(
 
     pdf.setFont(font_name, font_size)
 
-    if x is None:
+    if x == 0.0:
         x = get_middle_x_coord(pdf, text, font_name, font_size)
         if pending:
             x -= 5 * mm
@@ -91,9 +91,7 @@ def draw_text(
 def generate_pending_materials_labels(data: dict):
     """Generate and print labels from a json file"""
 
-    pdf = canvas.Canvas(
-        f"{TMP_FOLDER / 'pending_labels.pdf'}", pagesize=(WIDTH, HEIGHT)
-    )
+    pdf = Canvas(f"{TMP_FOLDER / 'pending_labels.pdf'}", pagesize=(WIDTH, HEIGHT))
     rectangle_x = WIDTH - 10 * mm
 
     if data["pending_materials"] == []:
@@ -115,10 +113,19 @@ def generate_pending_materials_labels(data: dict):
             stroke=0,
             fill=1,
         )
-        pdf.rect(5*mm, 5*mm, WIDTH-20*mm, 10*mm, stroke=0, fill=1)
+        pdf.rect(5 * mm, 5 * mm, WIDTH - 20 * mm, 10 * mm, stroke=0, fill=1)
 
         draw_text(
-            pdf, HEIGHT - 15 * mm, material["op_number"], pending=True, font_size=18
+            pdf,
+            HEIGHT - 10 * mm,
+            f"NF: {data["nfe_number"]}",
+            pending=True,
+            max_width=80 * mm,
+            font_size=12,
+        )
+
+        draw_text(
+            pdf, HEIGHT - 17 * mm, material["op_number"], pending=True, font_size=18
         )
         draw_text(
             pdf,
@@ -134,7 +141,7 @@ def generate_pending_materials_labels(data: dict):
             material["code"],
             pending=True,
             font_name="Arial",
-            font_size=19.5,
+            font_size=19,
         )
         pdf.setFillColor(black)
         draw_text(
@@ -153,7 +160,7 @@ def generate_pending_materials_labels(data: dict):
 def generate_stock_labels(data: dict, qr_code: bool):
     """Generate and print labels from a json file"""
 
-    pdf = canvas.Canvas(f"{TMP_FOLDER / 'stock_labels.pdf'}", pagesize=(WIDTH, HEIGHT))
+    pdf = Canvas(f"{TMP_FOLDER / 'stock_labels.pdf'}", pagesize=(WIDTH, HEIGHT))
 
     date: str = data["date"]
     nfe: int = data["nfe_number"]
@@ -169,7 +176,8 @@ def generate_stock_labels(data: dict, qr_code: bool):
 
         if qr_code:
             qr = qrcode.make(f"{order["code"]};{int(order["qty"])}")
-            qr.save("./tmp/qr-code.png")
+            with open("./tmp/qr-code.png", "wb") as f:
+                qr.save(f)
 
         for _ in range(2):
             pdf.setFillColor(black)
@@ -178,7 +186,7 @@ def generate_stock_labels(data: dict, qr_code: bool):
             pdf.rect(0.4 * mm, 5 * mm, 65 * mm, 15 * mm, stroke=1, fill=0)
 
             draw_text(
-                pdf, HEIGHT - MARGIN, date, MARGIN, max_width=80 * mm, font_size=10
+                pdf, HEIGHT - MARGIN - 2 * mm, date, MARGIN, max_width=80 * mm, font_size=10
             )
 
             pdf.drawImage(
@@ -267,7 +275,7 @@ def generate_stock_labels(data: dict, qr_code: bool):
                 f"Lote Total: {int(order['qty_total'])} {order['unit_type']}",
                 max_width=85 * mm,
                 font_name="Arial",
-                font_size=10.5,
+                font_size=10,
             )
             pdf.showPage()
     pdf.save()

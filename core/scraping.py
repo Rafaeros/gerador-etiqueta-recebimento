@@ -97,7 +97,7 @@ class CargaMaquinaClient:
         self.password = password
         self.driver = webdriver.Chrome()
         self.requests_cookies: dict = {}
-        self.selenium_cookies: dict = {}
+        self.selenium_cookies: list[dict] = [{}]
         self._initialize_client()
 
     def _initialize_client(self):
@@ -115,7 +115,7 @@ class CargaMaquinaClient:
         chrome_options.add_argument("--disable-dev-shm-usage")
         return chrome_options
 
-    def _save_cookies(self) -> Dict:
+    def _save_cookies(self):
         """Save cookies to a JSON file"""
         self.selenium_cookies = self.driver.get_cookies()
 
@@ -145,7 +145,7 @@ class CargaMaquinaClient:
         """Login to carga maquina and get cookies for requests"""
         try:
             self.driver.get(
-                "https://app.cargamaquina.com.br/site/login?c=31.1~78%2C8%5E56%2C8"
+                "https://v2.cargamaquina.com.br/site/login/c/3.1~13,3%5e17,7"
             )
 
             try:
@@ -175,7 +175,7 @@ class CargaMaquinaClient:
         """Scraping NFE data"""
         try:
             self.driver.get(
-                f"https://app.cargamaquina.com.br/compra?Compra%5Bnegociacao%5D={negociation_id}"
+                f"https://v2.cargamaquina.com.br/compra?Compra%5Bnegociacao%5D={negociation_id}"
             )
             nfe_checkbox = WebDriverWait(self.driver, 20).until(
                 EC.presence_of_all_elements_located(
@@ -240,7 +240,7 @@ class CargaMaquinaClient:
         )
         # Getting pending materials by codes in Nfe data scraping and sorting by crescent date.
         codes: list[str] = [order.code for order in nfe_data.orders]
-        pending_materials: dict = self.get_requested_materials(codes)
+        pending_materials: dict | None = self.get_requested_materials(codes)
         nfe_data.pending_materials = pending_materials["pending_materials"]
         nfe_data.pending_materials = sorted(
             nfe_data.pending_materials,
@@ -291,7 +291,7 @@ class CargaMaquinaClient:
         }
 
         response = requests.get(
-            "https://app.cargamaquina.com.br/pedido/exportarPedidoFaltaMP",
+            "https://v2.cargamaquina.com.br/pedido/exportarPedidoFaltaMP",
             params=params,
             cookies=self.requests_cookies,
             timeout=20,
@@ -299,12 +299,14 @@ class CargaMaquinaClient:
 
         if not response.ok:
             print(f"Error to get pending_materials status_code: {response.status_code}")
-            return None
+            return [{"pending_materials": []}]
         try:
             soup = BeautifulSoup(response.content, "html.parser")
 
             materials: List[Material] = []
             trs: list = soup.find_all("tr")[1:]
+
+
             for tr in trs:
                 creation_date: dt = dt.strptime(
                     tr.find_all("td")[0].text.strip(), "%d/%m/%y"
@@ -313,9 +315,9 @@ class CargaMaquinaClient:
                 op_number: str = str(tr.find_all("td")[3].text.strip())
                 product: str = tr.find_all("td")[5].text.strip()
                 pending_qty: str | float = (
-                    tr.find_all("td")[7].text.strip().split(" ")[0]
+                    tr.find_all("td")[8].text.strip().split(" ")[0]
                 )
-                unit_type: str = tr.find_all("td")[7].text.strip().split(" ")[-1]
+                unit_type: str = tr.find_all("td")[8].text.strip().split(" ")[-1]
 
                 if (creation_date.year < self.today.year) or (unit_type == "mt"):
                     continue

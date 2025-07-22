@@ -30,7 +30,7 @@ class Material:
     op_number: str
     product: str
     pending_qty: float
-
+    service_type: str
 
 @dataclass
 class PendingMaterials:
@@ -311,13 +311,14 @@ class CargaMaquinaClient:
                 creation_date: dt = dt.strptime(
                     tr.find_all("td")[0].text.strip(), "%d/%m/%y"
                 )
-                code: str = tr.find_all("td")[1].text.strip()
-                op_number: str = str(tr.find_all("td")[3].text.strip())
-                product: str = tr.find_all("td")[5].text.strip()
+                service_type: str = tr.find_all("td")[1].text.strip()
+                code: str = tr.find_all("td")[2].text.strip()
+                op_number: str = str(tr.find_all("td")[4].text.strip())
+                product: str = tr.find_all("td")[6].text.strip()
                 pending_qty: str | float = (
-                    tr.find_all("td")[8].text.strip().split(" ")[0]
+                    tr.find_all("td")[9].text.strip().split(" ")[0]
                 )
-                unit_type: str = tr.find_all("td")[8].text.strip().split(" ")[-1]
+                unit_type: str = tr.find_all("td")[9].text.strip().split(" ")[-1]
 
                 if (creation_date.year < self.today.year) or (unit_type == "mt"):
                     continue
@@ -336,6 +337,7 @@ class CargaMaquinaClient:
                         op_number=op_number,
                         product=product,
                         pending_qty=pending_qty,
+                        service_type=service_type,
                     )
                 )
             pending_materials: PendingMaterials = PendingMaterials(

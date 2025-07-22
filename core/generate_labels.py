@@ -118,30 +118,34 @@ def generate_pending_materials_labels(data: dict):
         draw_text(
             pdf,
             HEIGHT - 10 * mm,
-            f"NF: {data["nfe_number"]}",
+            f"NF {data["nfe_number"]}",
             pending=True,
             max_width=80 * mm,
-            font_size=12,
+            font_size=14,
         )
 
         draw_text(
-            pdf, HEIGHT - 17 * mm, material["op_number"], pending=True, font_size=18
+            pdf, HEIGHT - 17 * mm, f"Tipo de Serviço: {material["service_type"]}", pending=True, font_size=14
+        )
+
+        draw_text(
+            pdf, HEIGHT - 28 * mm, material["op_number"], pending=True, font_size=18
         )
         draw_text(
             pdf,
-            HEIGHT - 30 * mm,
+            HEIGHT - 38 * mm,
             material["product"],
             pending=True,
             font_name="Arial",
-            font_size=21,
+            font_size=18,
         )
         draw_text(
             pdf,
-            HEIGHT - 45 * mm,
+            HEIGHT - 50 * mm,
             material["code"],
             pending=True,
             font_name="Arial",
-            font_size=19,
+            font_size=18,
         )
         pdf.setFillColor(black)
         draw_text(
@@ -186,7 +190,12 @@ def generate_stock_labels(data: dict, qr_code: bool):
             pdf.rect(0.4 * mm, 5 * mm, 65 * mm, 15 * mm, stroke=1, fill=0)
 
             draw_text(
-                pdf, HEIGHT - MARGIN - 2 * mm, date, MARGIN, max_width=80 * mm, font_size=10
+                pdf,
+                HEIGHT - MARGIN - 2 * mm,
+                date,
+                MARGIN,
+                max_width=80 * mm,
+                font_size=10,
             )
 
             pdf.drawImage(

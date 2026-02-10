@@ -156,8 +156,6 @@ def generate_pending_materials_labels(data: dict):
             font_name="Arial",
             font_size=10,
         )
-        pdf.showPage()
-
     pdf.save()
 
 
@@ -286,7 +284,6 @@ def generate_stock_labels(data: dict, qr_code: bool):
                 font_name="Arial",
                 font_size=10,
             )
-            pdf.showPage()
     pdf.save()
 
 

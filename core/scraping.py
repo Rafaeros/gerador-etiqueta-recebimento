@@ -166,6 +166,7 @@ class CargaMaquinaClient:
             login_button = self.driver.find_element(by=By.NAME, value="yt0")
             login_button.click()
             self._save_cookies()
+            print("Login Successfull")
         except TimeoutException as e:
             print(f"Timeout: {e}")
         except WebDriverException as e:
@@ -279,15 +280,15 @@ class CargaMaquinaClient:
 
     def get_requested_materials(self, nfe_material_code: List[str]):
         """Get the data of pending materials in production orders on CargaMaquina"""
-        params: dict[str, str] = {
-            "Pedido[_nomeMaterial]": "",
-            "Pedido[_solicitante]": "",
-            "Pedido[status_id]": "",
-            "Pedido[situacao]": "TODAS",
-            "Pedido[_qtdeFornecida]": "Parcialmente",
-            "Pedido[_inicioCriacao]": f"01/01/{self.today.year}",
-            "Pedido[_fimCriacao]": f"25/12/{self.today.year}",
-            "pageSize": "20",
+        params = {
+            'Pedido[_nomeMaterial]': '',
+            'Pedido[_solicitante]': '',
+            'Pedido[status_id]': '',
+            'Pedido[situacao]': 'TODAS',
+            'Pedido[_qtdeFornecida]': 'Parcialmente',
+            'Pedido[_inicioCriacao]': '01/10/2025',
+            'Pedido[_fimCriacao]': f'31/12/{self.today.year}',
+            'pageSize': '20',
         }
 
         response = requests.get(
@@ -320,7 +321,7 @@ class CargaMaquinaClient:
                 )
                 unit_type: str = tr.find_all("td")[9].text.strip().split(" ")[-1]
 
-                if (creation_date.year < self.today.year) or (unit_type == "mt"):
+                if (unit_type == "mt"):
                     continue
 
                 if "." in pending_qty:

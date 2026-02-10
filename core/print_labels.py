@@ -17,6 +17,7 @@ def print_labels(file_paths: list[str]) -> None:
     
     try:
         for file_path in file_paths:
+            time.sleep(2)
             abs_path = os.path.abspath(file_path)
             if not os.path.exists(file_path):
                 continue

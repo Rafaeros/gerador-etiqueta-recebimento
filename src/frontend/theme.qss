@@ -1,0 +1,170 @@
+/* ================================
+   TEMA CLARO • LIGHT 2025 (ALTO CONTRASTE QT)
+   Fundo App: #f1f5f9 (Cinza suave)
+   Componentes: #ffffff (Branco puro)
+   Bordas: #cbd5e1 (Cinza definido)
+================================ */
+
+/* -------- BASE GLOBAL -------- */
+QWidget {
+    background-color: #f1f5f9; /* Fundo levemente mais escuro para o branco saltar */
+    color: #0f172a;
+    font-family: "Segoe UI", "Roboto", sans-serif;
+    font-size: 14px;
+}
+
+/* Links, textos destacados */
+a, QLabel#link {
+    color: #7609e8;
+    font-weight: bold;
+}
+
+/* ------------------------------
+        BARRA DE ROLAGEM
+------------------------------ */
+QScrollBar:vertical {
+    border: none;
+    background: transparent;
+    width: 8px;
+    margin: 0px;
+}
+QScrollBar::handle:vertical {
+    background: #94a3b8; /* Cor mais sólida para a barra de rolagem */
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #7609e8;
+}
+QScrollBar::add-line, QScrollBar::sub-line {
+    background: none;
+    height: 0px;
+}
+
+/* ------------------------------
+             BOTÕES
+------------------------------ */
+QPushButton {
+    background-color: #ffffff;
+    color: #0f172a;
+    border: 1px solid #cbd5e1; /* Borda mais visível */
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+QPushButton:hover {
+    background-color: #f8fafc;
+    border: 1px solid #94a3b8; /* Borda escurece no hover */
+}
+QPushButton:pressed {
+    background-color: #e2e8f0;
+}
+
+/* Botão de Destaque com o Gradiente da Marca */
+QPushButton#primary {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7609e8, stop:1 #316ef3);
+    color: #ffffff;
+    border: none;
+    font-weight: bold;
+}
+QPushButton#primary:hover {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #8b2cf5, stop:1 #4a80f5);
+}
+QPushButton#primary:pressed {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #5c07b5, stop:1 #2554bd);
+}
+
+/* ------------------------------
+              INPUTS
+------------------------------ */
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QComboBox {
+    background-color: #ffffff;
+    color: #0f172a;
+    border: 1px solid #cbd5e1; /* Borda marcante para não sumir */
+    padding: 8px;
+    border-radius: 6px;
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QComboBox:focus {
+    border: 2px solid #7609e8; /* Foco mais grosso e colorido */
+    background-color: #ffffff;
+    padding: 7px; /* Compensa o pixel extra da borda */
+}
+
+/* ------------------------------
+            TABS
+------------------------------ */
+QTabWidget::pane {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #ffffff;
+    top: -1px; /* Junta a aba com o painel */
+}
+
+QTabBar::tab {
+    background: #e2e8f0; /* Aba inativa mais cinza */
+    color: #475569;
+    padding: 10px 20px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border: 1px solid transparent;
+    margin-right: 2px;
+    font-weight: 500;
+}
+
+QTabBar::tab:selected {
+    background-color: #ffffff; /* Aba ativa fica branca igual o painel */
+    color: #7609e8;
+    border: 1px solid #cbd5e1;
+    border-bottom: 1px solid #ffffff; /* Abre a borda inferior para integrar com o painel */
+}
+
+QTabBar::tab:hover:!selected {
+    background: #cbd5e1;
+    color: #0f172a;
+}
+
+/* ------------------------------
+            LIST
+------------------------------ */
+QListWidget {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px;
+    outline: 0;
+    color: #0f172a;
+}
+
+/* Itens normais */
+QListWidget::item {
+    background-color: transparent;
+    padding: 12px;
+    margin: 2px;
+    border-radius: 4px;
+    color: #1e293b;
+    border-bottom: 1px solid #f1f5f9; /* Linha divisória sutil entre os itens */
+}
+
+/* Hover */
+QListWidget::item:hover {
+    background-color: #f8fafc;
+    color: #7609e8;
+}
+
+/* Item selecionado */
+QListWidget::item:selected {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7609e8, stop:1 #316ef3);
+    color: #ffffff;
+    border: none;
+}
+
+/* Foco inativo da lista */
+QListWidget::item:selected:!active {
+    background-color: #9b5cfa;
+    color: #ffffff;
+}
+
+/* Focus da lista */
+QListWidget:focus {
+    border: 2px solid #7609e8;
+}

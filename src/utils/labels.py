@@ -123,7 +123,6 @@ def _draw_single_stock_label_pdf(pdf: Canvas, data: dict, order: dict, qr_code: 
     pdf.setFillColor(black)
     pdf.rect(0, (PAGE_H_MM - 40) * mm, PAGE_W_MM * mm, 10 * mm, stroke=0, fill=1)
     pdf.setStrokeColor(black)
-    pdf.rect(0.4 * mm, 5 * mm, 65 * mm, 15 * mm, stroke=1, fill=0)
 
     draw_pdf_text(pdf, PAGE_H_MM - MARGIN_MM - 2, data.get("date", ""), x_mm=MARGIN_MM, max_w_mm=80, size=10)
 

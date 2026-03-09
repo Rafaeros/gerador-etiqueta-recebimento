@@ -19,28 +19,35 @@ def load_stylesheet(app: QApplication) -> None:
         with open(qss_path, "r", encoding="utf-8") as f:
             app.setStyleSheet(f.read())
     else:
-        print(f"Atenção: Arquivo de tema não encontrado em {qss_path}")
+        print(f"Warning: Theme file not found at {qss_path}")
 
 
-async def startup_logic(config_manager: ConfigManager, session_manager: SessionManager):
-    """Lógica assíncrona executada antes da interface abrir."""
-    while True:
-        session_cfg = config_manager.get_session_config()
+async def startup_logic(config_manager: ConfigManager, session_manager: SessionManager) -> bool:
+    """
+    Asynchronous logic executed before opening the main interface.
+    Returns True if successfully connected to the remote system, False otherwise.
+    """
+    session_cfg = config_manager.get_session_config()
 
-        if not session_cfg.get("username") or not session_cfg.get("password"):
-            login_dialog = LoginDialog(config_manager)
-            if login_dialog.exec() != QDialog.Accepted:
-                sys.exit(0)
+    # Prompt for credentials if none are saved
+    if not session_cfg.get("username") or not session_cfg.get("password"):
+        login_dialog = LoginDialog(config_manager)
+        if login_dialog.exec() != QDialog.Accepted:
+            sys.exit(0)
 
-        if await session_manager.login():
-            break
-        else:
-            QMessageBox.critical(
-                None,
-                "Erro de Autenticação",
-                "Falha ao realizar login.\nVerifique seu usuário, senha e conexão com a internet.",
-            )
-            config_manager.set_session_config({"username": "", "password": ""})
+    # Attempt to authenticate
+    is_connected = await session_manager.login()
+    
+    # Display offline warning if authentication fails
+    if not is_connected:
+        QMessageBox.warning(
+            None,
+            "Modo Offline",
+            "Não foi possível conectar ao sistema CargaMáquina (Credenciais inválidas ou sem internet).\n\n"
+            "O aplicativo será iniciado em Modo Offline. Você ainda poderá usar a aba 'Manual' e acessar as 'Configurações'."
+        )
+        
+    return is_connected
 
 
 def main() -> None:
@@ -48,14 +55,21 @@ def main() -> None:
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     load_stylesheet(app)
+    
     loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)
+    
     config_manager = ConfigManager()
     session_manager = SessionManager(config_manager)
     printer_manager = PrinterManager()
-    loop.run_until_complete(startup_logic(config_manager, session_manager))
-    window = Interface(config_manager, printer_manager, session_manager)
+
+    # Execute startup logic and capture connection status
+    is_connected = loop.run_until_complete(startup_logic(config_manager, session_manager))
+    
+    # Initialize the interface with the connection status
+    window = Interface(config_manager, printer_manager, session_manager, is_connected)
     window.show()
+    
     app.setQuitOnLastWindowClosed(True)
     with loop:
         loop.run_forever()

@@ -74,6 +74,7 @@ class SearchNfeDataWidget(QWidget):
         actions_layout = QHBoxLayout()
 
         self.btn_generate_labels = QPushButton("Gerar Etiquetas")
+        self.btn_generate_labels.setObjectName("primary")
         self.btn_generate_labels.setEnabled(False)
         self.btn_generate_labels.clicked.connect(self.handle_generate_labels)
 

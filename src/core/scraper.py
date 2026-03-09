@@ -1,3 +1,4 @@
+import re
 import logging
 from typing import List
 from bs4 import BeautifulSoup
@@ -36,7 +37,7 @@ class RequestsScraper:
 
         # 2. Extract pending materials using the existing aiohttp method
         codes = [order.code for order in orders_list]
-        pending_data_dict = await self.extract_pending_materials(codes, init_date, end_date)
+        pending_data_dict = await self.extract_pending_materials(codes)
         pending_list = pending_data_dict.get("pending_materials", [])
         
         # Sort pending materials by creation date
@@ -118,7 +119,7 @@ class RequestsScraper:
             try:
                 logging.info("Navigating to negotiation %s...", negociation_id)
                 url = f"{self.session_manager.base_url}/compra?Compra%5Bnegociacao%5D={negociation_id}"
-                await page.goto(url, wait_until="domcontentloaded")
+                await page.goto(url, wait_until="domcontentloaded", timeout=20000)
                 checkbox_locator = page.locator('//*[@id="compraSelecionados_0"]')
                 await checkbox_locator.wait_for(state="visible", timeout=20000)
                 await checkbox_locator.click()
@@ -213,8 +214,6 @@ class RequestsScraper:
     async def extract_pending_materials(
         self,
         nfe_material_code: List[str],
-        init_date: str = "01/10/2025",
-        end_date: str = "",
     ) -> dict:
         """
         Extracts pending materials from the HTML response, applying filters for unit type and NFe codes.
@@ -224,9 +223,6 @@ class RequestsScraper:
         if not session:
             logging.error("HTTP Session not initialized. Please login first.")
             return {}
-
-        if not end_date:
-            end_date = f"31/12/{dt.now().year}"
 
         endpoint = f"{self.session_manager.base_url}/pedido/exportarPedidoFaltaMP"
         headers = {
@@ -241,8 +237,8 @@ class RequestsScraper:
             ("Pedido[status_id]", ""),
             ("Pedido[situacao]", "TODAS"),
             ("Pedido[_qtdeFornecida]", "Parcialmente"),
-            ("Pedido[_inicioCriacao]", init_date),
-            ("Pedido[_fimCriacao]", end_date),
+            ("Pedido[_inicioCriacao]", "01/10/2025"), 
+            ("Pedido[_fimCriacao]", f"31/12/{dt.now().year}"),
             ("pageSize", "20"),
         ]
 
@@ -260,7 +256,7 @@ class RequestsScraper:
 
     def _parse_pending_materials(self, html: str, nfe_material_code: List[str]) -> dict:
         """
-        Parses the HTML content to extract pending materials.
+        Parses the HTML content to extract pending materials using the exact old logic.
         """
         soup = BeautifulSoup(html, "html.parser")
         data: List[Material] = []
@@ -269,30 +265,35 @@ class RequestsScraper:
         for tr in trs:
             tds = tr.find_all("td")
             if len(tds) >= 10:
-                raw_date = tds[0].get_text(strip=True)
-                service_type = tds[1].get_text(strip=True)
-                code = tds[2].get_text(strip=True)
+                code = tds[2].text.strip()
 
                 if code not in nfe_material_code:
                     continue
 
-                qty_full_text = tds[9].get_text(strip=True).split(" ")
-                pending_qty_str = qty_full_text[0]
-                unit_type = qty_full_text[-1]
-
-                if unit_type.lower() == "mt":
-                    continue
-
-                op_number = str(tds[4].get_text(strip=True))
-                product = tds[6].get_text(strip=True)
+                raw_date = tds[0].text.strip()
                 try:
                     creation_date = dt.strptime(raw_date, "%d/%m/%y").strftime("%d/%m/%y")
                 except ValueError:
                     creation_date = raw_date
-                try:
-                    if "." in pending_qty_str:
-                        pending_qty_str = pending_qty_str.replace(".", "")
+
+                service_type = tds[1].text.strip()
+                op_number = str(tds[4].text.strip())
+                product = tds[6].text.strip()
+                
+                qty_parts = tds[9].text.strip().split(" ")
+                pending_qty_str = qty_parts[0]
+                unit_type = qty_parts[-1].lower()
+
+                if unit_type == "mt":
+                    continue
+
+                if "." in pending_qty_str:
+                    pending_qty_str = pending_qty_str.replace(".", "")
+                
+                if "," in pending_qty_str:
                     pending_qty_str = pending_qty_str.replace(",", ".")
+
+                try:
                     pending_qty_val = float(pending_qty_str)
                 except ValueError as e:
                     logging.warning(

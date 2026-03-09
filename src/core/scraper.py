@@ -93,6 +93,7 @@ class RequestsScraper:
         Navigates using Playwright, injecting the authenticated cookies from aiohttp.
         Currently set to headless=False so you can see the browser actions.
         """
+        
         if not self.session_manager.session:
             logging.error("HTTP Session not initialized. Please login first.")
             return []

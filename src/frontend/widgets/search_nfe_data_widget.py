@@ -36,16 +36,16 @@ class SearchNfeDataWidget(QWidget):
         """Sets up the user interface layout and components."""
         layout = QVBoxLayout(self)
         search_layout = QHBoxLayout()
-        self.nfe_label = QLabel("Número da NFE:")
-        self.nfe_input = QLineEdit()
-        self.nfe_input.setPlaceholderText("Ex: 49555...")
+        self.id_label = QLabel("ID da Compra:")
+        self.id_input = QLineEdit()
+        self.id_input.setPlaceholderText("Ex: 49555...")
 
         self.btn_search = QPushButton("Buscar")
         self.btn_search.setObjectName("primary")
         self.btn_search.clicked.connect(self.handle_search)
 
-        search_layout.addWidget(self.nfe_label)
-        search_layout.addWidget(self.nfe_input)
+        search_layout.addWidget(self.id_label)
+        search_layout.addWidget(self.id_input)
         search_layout.addWidget(self.btn_search)
 
         self.table_widget = QTableWidget()
@@ -86,10 +86,10 @@ class SearchNfeDataWidget(QWidget):
     @asyncSlot()
     async def handle_search(self) -> None:
         """Handles the search button click event using the authenticated session."""
-        nfe_number = self.nfe_input.text().strip()
+        negociation_id = self.id_input.text().strip()
 
-        if not nfe_number:
-            QMessageBox.warning(self, "Aviso", "Por favor, insira o número da NFE.")
+        if not negociation_id:
+            QMessageBox.warning(self, "Aviso", "Por favor, insira o ID da compra.")
             return
 
         self.btn_search.setEnabled(False)
@@ -104,7 +104,7 @@ class SearchNfeDataWidget(QWidget):
 
             scraper = RequestsScraper(self.session_manager)
             response = await scraper.extract_all_data(
-                nfe_number=nfe_number, init_date=init_date, end_date=end_date
+                negociation_id=negociation_id, init_date=init_date, end_date=end_date
             )
             self.current_nfe_data = response
             self.populate_table(response.orders)
@@ -153,7 +153,7 @@ class SearchNfeDataWidget(QWidget):
 
     def clear_form(self) -> None:
         """Cleans the form inputs and resets the table and state."""
-        self.nfe_input.clear()
+        self.id_input.clear()
         self.table_widget.setRowCount(0)
         self.current_nfe_data = None
         self.btn_generate_labels.setEnabled(False)

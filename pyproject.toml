@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "aiohttp>=3.13.3",
     "beautifulsoup4>=4.13.3",
+    "playwright>=1.58.0",
     "pydantic>=2.12.5",
     "pyside6>=6.10.2",
     "qasync>=0.28.0",

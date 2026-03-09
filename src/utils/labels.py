@@ -243,6 +243,30 @@ def _generate_single_pending_img(nfe_number: str, mat: dict, output_path: str):
 
     img.save(output_path)
 
+def _draw_single_nfe_label_pdf(pdf: Canvas, nfe_number: str, current: int, total: int):
+    """Draws the exclusive NFE label on the PDF with a large centered counter."""
+    pdf.setFillColor(white)
+    pdf.rect(0, 0, PAGE_W_MM * mm, PAGE_H_MM * mm, stroke=0, fill=1)
+    pdf.setFillColor(black)
+    pdf.setStrokeColor(black)
+    pdf.setLineWidth(2)
+    pdf.rect(2 * mm, 2 * mm, (PAGE_W_MM - 4) * mm, (PAGE_H_MM - 4) * mm, stroke=1, fill=0)
+    draw_pdf_text(pdf, PAGE_H_MM / 2 + 6, f"NF {nfe_number}", size=36)
+    draw_pdf_text(pdf, PAGE_H_MM / 2 - 12, f"{current} / {total}", size=36)
+    
+    pdf.showPage()
+
+
+def _generate_single_nfe_img(nfe_number: str, current: int, total: int, output_path: str):
+    """Generates the image of the exclusive NFE label with a large centered counter."""
+    img = Image.new("RGB", (PAGE_W_PX, PAGE_H_PX), "white")
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([x_px(2), y_px(2), PAGE_W_PX - x_px(2), PAGE_H_PX - y_px(2)], outline="black", width=4)
+    draw_img_text(draw, PAGE_H_MM / 2 + 6, f"NF {nfe_number}", size=36, color="black")
+    draw_img_text(draw, PAGE_H_MM / 2 - 12, f"{current} / {total}", size=36, color="black")
+    
+    img.save(output_path)
+
 
 # --- MAIN GENERATION LOGIC ---
 
@@ -310,6 +334,100 @@ def generate_img_documents(data: dict, qr_code: bool) -> List[str]:
     return paths
 
 
+def generate_manual_labels(data: dict, qr_code_mode: str) -> List[str]:
+    """
+    Receives a dictionary assembled by the user in the Manuals tab and 
+    routes to the PDF generator (Windows) or Images (Linux).
+    """
+    with_qr = qr_code_mode.lower() == "s"
+    is_linux = platform.system().lower().startswith("linux")
+    
+    label_type = data.get("type")
+    print_qty = int(data.get("print_qty", 1))
+    
+    # --- Helper to safely handle empty floats ---
+    def safe_float(val):
+        try:
+            return float(str(val).replace(",", "."))
+        except (ValueError, TypeError):
+            return 0.0
+
+    if is_linux:
+        # PNG generation (Linux)
+        paths = []
+        logo_img = None
+        if LOGO_PATH.exists():
+            logo_img = Image.open(LOGO_PATH).convert("RGBA").resize((x_px(10), x_px(10)))
+
+        for i in range(print_qty):
+            path = str(LABELS_FOLDER / f"manual_label_{i:03d}.png")
+            
+            if label_type == "stock":
+                order_fake = {
+                    "nfe": data.get("nfe", ""), 
+                    "address": data.get("address", ""),  # <-- CORRECTION HERE
+                    "order": "",
+                    "code": data.get("code", ""), 
+                    "description": data.get("description", ""),
+                    "qty": safe_float(data.get("qty")), 
+                    "qty_total": safe_float(data.get("qty_total")),
+                    "unit_type": "un", 
+                    "supplier": data.get("supplier", "")
+                }
+                _generate_single_stock_img({"date": data.get("date", "")}, order_fake, with_qr, logo_img, path)
+            
+            elif label_type == "pending":
+                mat_fake = {
+                    "service_type": data.get("service_type", ""), 
+                    "op_number": data.get("op_number", ""),
+                    "product": data.get("product", ""), 
+                    "code": data.get("code", ""),
+                    "pending_qty": safe_float(data.get("qty"))
+                }
+                _generate_single_pending_img(data.get("nfe", ""), mat_fake, path)
+            
+            elif label_type == "nfe":
+                _generate_single_nfe_img(data.get("nfe", ""), i + 1, print_qty, path)
+                
+            paths.append(path)
+        return paths
+
+    else:
+        # PDF generation (Windows)
+        pdf_path = str(LABELS_FOLDER / "manual_labels_job.pdf")
+        pdf = Canvas(pdf_path, pagesize=(PAGE_W_MM * mm, PAGE_H_MM * mm))
+        
+        for i in range(print_qty):
+            if label_type == "stock":
+                order_fake = {
+                    "nfe": data.get("nfe", ""), 
+                    "address": data.get("address", ""),  # <-- CORRECTION HERE
+                    "order": "",
+                    "code": data.get("code", ""), 
+                    "description": data.get("description", ""),
+                    "qty": safe_float(data.get("qty")), 
+                    "qty_total": safe_float(data.get("qty_total")),
+                    "unit_type": "un", 
+                    "supplier": data.get("supplier", "")
+                }
+                _draw_single_stock_label_pdf(pdf, {"date": data.get("date", "")}, order_fake, with_qr)
+            
+            elif label_type == "pending":
+                mat_fake = {
+                    "service_type": data.get("service_type", ""), 
+                    "op_number": data.get("op_number", ""),
+                    "product": data.get("product", ""), 
+                    "code": data.get("code", ""),
+                    "pending_qty": safe_float(data.get("qty"))
+                }
+                _draw_single_pending_label_pdf(pdf, data.get("nfe", ""), mat_fake)
+            
+            elif label_type == "nfe":
+                _draw_single_nfe_label_pdf(pdf, data.get("nfe", ""), i + 1, print_qty)
+
+        pdf.save()
+        return [pdf_path]
+
 # --- ENTRY POINT ---
 
 def generate_nfe_labels(nfe_number: str, qr_code_mode: str) -> List[str]:
@@ -318,10 +436,10 @@ def generate_nfe_labels(nfe_number: str, qr_code_mode: str) -> List[str]:
     """
     json_path = TMP_FOLDER / f"nfe_{nfe_number}.json"
     
-    print(f"DEBUG: Procurando JSON em: {json_path}")
+    print(f"DEBUG: Looking for JSON at: {json_path}")
     
     if not json_path.exists():
-        print("Erro: Arquivo JSON não encontrado no caminho acima!")
+        print("Error: JSON file not found at the path above!")
         return []
 
     with open(json_path, "r", encoding="utf-8") as file:
@@ -331,15 +449,15 @@ def generate_nfe_labels(nfe_number: str, qr_code_mode: str) -> List[str]:
     is_linux = platform.system().lower().startswith("linux")
 
     if is_linux:
-        print("DEBUG: Gerando imagens PNG para Linux...")
+        print("DEBUG: Generating PNG images for Linux...")
         return generate_img_documents(data, with_qr)
     else:
-        print("DEBUG: Gerando PDF para Windows...")
+        print("DEBUG: Generating PDF for Windows...")
         return generate_pdf_document(data, with_qr)
 
 
 if __name__ == "__main__":
     generated = generate_nfe_labels("1327", "s")
-    print(f"Arquivos gerados com sucesso: {len(generated)}")
+    print(f"Files generated successfully: {len(generated)}")
     for f in generated:
         print(f" - {f}")

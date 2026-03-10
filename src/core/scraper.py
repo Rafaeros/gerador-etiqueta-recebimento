@@ -12,24 +12,31 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 class RequestsScraper:
     """
-    Scraper responsible for extracting NFe data and pending materials using 
+    Scraper responsible for extracting NFe data and pending materials using
     both aiohttp for raw requests and Playwright for complex DOM interactions.
     """
 
     def __init__(self, session_manager: SessionManager):
         self.session_manager = session_manager
 
-    async def extract_all_data(self, negociation_id: str, init_date: str, end_date: str) -> NFeData:
+    async def extract_all_data(
+        self, negociation_id: str, init_date: str, end_date: str
+    ) -> NFeData:
         """
-        Orchestrates the extraction of the NFe data using Playwright, matches it 
+        Orchestrates the extraction of the NFe data using Playwright, matches it
         with pending materials, processes the quantities, and saves the JSON.
         """
         # 1. Extract NFe data using Playwright headless browser
         orders_list = await self.extract_nfe_data_playwright(negociation_id)
-        
+
         if not orders_list:
             logging.warning("No orders found for negotiation ID %s.", negociation_id)
-            return NFeData(date=dt.now().strftime("%d/%m/%y"), nfe_number=0, supplier_name="", orders=[])
+            return NFeData(
+                date=dt.now().strftime("%d/%m/%y"),
+                nfe_number=0,
+                supplier_name="",
+                orders=[],
+            )
 
         # Get the real NFe number and supplier from the first parsed order
         real_nfe_number = orders_list[0].nfe
@@ -39,7 +46,7 @@ class RequestsScraper:
         codes = [order.code for order in orders_list]
         pending_data_dict = await self.extract_pending_materials(codes)
         pending_list = pending_data_dict.get("pending_materials", [])
-        
+
         # Sort pending materials by creation date
         pending_list = sorted(
             pending_list,
@@ -51,7 +58,7 @@ class RequestsScraper:
             nfe_number=real_nfe_number,
             supplier_name=supplier,
             orders=orders_list,
-            pending_materials=pending_list
+            pending_materials=pending_list,
         )
 
         # 3. Validation and quantity deduction logic
@@ -60,8 +67,9 @@ class RequestsScraper:
                 for order in nfe_data.orders:
                     if pending_material["code"] == order.code:
                         logging.info(
-                            "Matching - Order qty: %s | Pending qty: %s", 
-                            order.qty, pending_material["pending_qty"]
+                            "Matching - Order qty: %s | Pending qty: %s",
+                            order.qty,
+                            pending_material["pending_qty"],
                         )
                         if order.qty == 0:
                             pending_material["pending_qty"] = 0
@@ -77,15 +85,15 @@ class RequestsScraper:
             nfe_data.pending_materials = [
                 pm for pm in nfe_data.pending_materials if pm["pending_qty"] > 0
             ]
-        
-        # Keep only orders that still have quantity > 0
-        nfe_data.orders = [
-            order for order in nfe_data.orders if order.qty > 0
-        ]
+
+        # We no longer filter out orders with qty == 0 so they can be shown in the UI
+        # and their pending materials can still be printed.
 
         # Save to JSON
         nfe_data.save_to_json(str(real_nfe_number))
-        logging.info("Process completed. File saved as ./tmp/data_%s.json", real_nfe_number)
+        logging.info(
+            "Process completed. File saved as ./tmp/data_%s.json", real_nfe_number
+        )
 
         return nfe_data
 
@@ -94,7 +102,7 @@ class RequestsScraper:
         Navigates using Playwright, injecting the authenticated cookies from aiohttp.
         Currently set to headless=False so you can see the browser actions.
         """
-        
+
         if not self.session_manager.session:
             logging.error("HTTP Session not initialized. Please login first.")
             return []
@@ -106,12 +114,14 @@ class RequestsScraper:
             # --- Cookie Injection ---
             cookies = []
             for cookie in self.session_manager.session.cookie_jar:
-                cookies.append({
-                    "name": cookie.key,
-                    "value": cookie.value,
-                    "domain": cookie["domain"] or ".cargamaquina.com.br",
-                    "path": cookie["path"] or "/",
-                })
+                cookies.append(
+                    {
+                        "name": cookie.key,
+                        "value": cookie.value,
+                        "domain": cookie["domain"] or ".cargamaquina.com.br",
+                        "path": cookie["path"] or "/",
+                    }
+                )
             await context.add_cookies(cookies)
 
             page = await context.new_page()
@@ -127,11 +137,13 @@ class RequestsScraper:
                 # Click the view button
                 await page.locator('//*[@id="linkVisualizar"]').click()
                 # pois é um input type="hidden" e nunca ficará "visible".
-                await page.locator('input#FaturamentoGrid_0_observacao').wait_for(state="attached", timeout=20000)
+                await page.locator("input#FaturamentoGrid_0_observacao").wait_for(
+                    state="attached", timeout=20000
+                )
 
                 # Extract the final rendered HTML
                 html_content = await page.content()
-                
+
                 return self._parse_nfe_data_html(html_content)
 
             except Exception as e:
@@ -140,7 +152,7 @@ class RequestsScraper:
             finally:
                 # Opcional: Se quiser que a tela demore 2 segundinhos antes de fechar pra você conseguir ver o resultado final
                 # import asyncio
-                # await asyncio.sleep(2) 
+                # await asyncio.sleep(2)
                 await browser.close()
 
     def _parse_nfe_data_html(self, html: str) -> List[OrderData]:
@@ -152,12 +164,18 @@ class RequestsScraper:
 
         try:
             # Extract the real NFe number from the input value
-            raw_obs = soup.find("input", {"id": "FaturamentoGrid_0_observacao"}).get("value")
+            raw_obs = soup.find("input", {"id": "FaturamentoGrid_0_observacao"}).get(
+                "value"
+            )
             nfe_val = int(raw_obs.split("-")[-1].strip())
-            
+
             # Extract supplier name
-            supplier = soup.find("span", {"class": "select2-chosen"}).text.strip().split(" ")[0]
-            
+            supplier = (
+                soup.find("span", {"class": "select2-chosen"})
+                .text.strip()
+                .split(" ")[0]
+            )
+
             # Target the correct table (index 1)
             mp_table = soup.find_all("table")[1]
             trs = mp_table.find_all("tr")[1:]
@@ -179,8 +197,10 @@ class RequestsScraper:
                     qty_val = float(qty_str.replace(".", "").replace(",", "."))
                 except ValueError as e:
                     logging.warning(
-                        "Failed to convert quantity '%s' for order %s: %s", 
-                        qty_str, order_str, e
+                        "Failed to convert quantity '%s' for order %s: %s",
+                        qty_str,
+                        order_str,
+                        e,
                     )
                     continue
 
@@ -188,7 +208,7 @@ class RequestsScraper:
                 if code in aggregated_data:
                     aggregated_data[code]["qty"] += qty_val
                     aggregated_data[code]["qty_total"] += qty_val
-                    
+
                     existing_orders = aggregated_data[code]["order"].split("/")
                     if order_str not in existing_orders:
                         aggregated_data[code]["order"] += f"/{order_str}"
@@ -207,8 +227,12 @@ class RequestsScraper:
 
         # Convert dictionary values to a list of OrderData Pydantic models
         data: List[OrderData] = [OrderData(**item) for item in aggregated_data.values()]
-        
-        logging.info("Extraction complete. %d aggregated records found for NFe %s.", len(data), nfe_val)
+
+        logging.info(
+            "Extraction complete. %d aggregated records found for NFe %s.",
+            len(data),
+            nfe_val,
+        )
         return data
 
     async def extract_pending_materials(
@@ -237,14 +261,16 @@ class RequestsScraper:
             ("Pedido[status_id]", ""),
             ("Pedido[situacao]", "TODAS"),
             ("Pedido[_qtdeFornecida]", "Parcialmente"),
-            ("Pedido[_inicioCriacao]", "01/10/2025"), 
+            ("Pedido[_inicioCriacao]", "01/10/2025"),
             ("Pedido[_fimCriacao]", f"31/12/{dt.now().year}"),
             ("pageSize", "20"),
         ]
 
         try:
             logging.info("Fetching pending materials report via aiohttp...")
-            async with session.get(endpoint, headers=headers, params=params) as response:
+            async with session.get(
+                endpoint, headers=headers, params=params
+            ) as response:
                 response.raise_for_status()
                 html_content = await response.text()
 
@@ -272,14 +298,16 @@ class RequestsScraper:
 
                 raw_date = tds[0].text.strip()
                 try:
-                    creation_date = dt.strptime(raw_date, "%d/%m/%y").strftime("%d/%m/%y")
+                    creation_date = dt.strptime(raw_date, "%d/%m/%y").strftime(
+                        "%d/%m/%y"
+                    )
                 except ValueError:
                     creation_date = raw_date
 
                 service_type = tds[1].text.strip()
                 op_number = str(tds[4].text.strip())
                 product = tds[6].text.strip()
-                
+
                 qty_parts = tds[9].text.strip().split(" ")
                 pending_qty_str = qty_parts[0]
                 unit_type = qty_parts[-1].lower()
@@ -289,7 +317,7 @@ class RequestsScraper:
 
                 if "." in pending_qty_str:
                     pending_qty_str = pending_qty_str.replace(".", "")
-                
+
                 if "," in pending_qty_str:
                     pending_qty_str = pending_qty_str.replace(",", ".")
 
@@ -298,7 +326,9 @@ class RequestsScraper:
                 except ValueError as e:
                     logging.warning(
                         "Failed to convert quantity '%s' for code %s: %s",
-                        pending_qty_str, code, e
+                        pending_qty_str,
+                        code,
+                        e,
                     )
                     continue
 

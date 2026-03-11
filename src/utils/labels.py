@@ -9,6 +9,7 @@ import platform
 import pathlib
 from typing import List, Callable
 
+from src.utils.logger import log_label_generation
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
 
@@ -611,6 +612,16 @@ def generate_manual_labels(data: dict, qr_code_mode: str) -> List[str]:
     label_type = data.get("type")
     print_qty = int(data.get("print_qty", 1))
 
+    try:
+        if label_type == "stock":
+            log_label_generation("Estoque Manual", print_qty)
+        elif label_type == "pending":
+            log_label_generation("Falta Manual", print_qty)
+        elif label_type == "nfe":
+            log_label_generation("NFE Manual", print_qty)
+    except Exception as e:
+        print(f"Failed to log manual labels: {e}")
+
     # --- Helper to safely handle empty floats ---
     def safe_float(val):
         try:
@@ -718,6 +729,27 @@ def generate_nfe_labels(nfe_number: str, qr_code_mode: str) -> List[str]:
 
     with open(json_path, "r", encoding="utf-8") as file:
         data = json.load(file)
+
+    try:
+        stock_qty = 0
+        pending_qty = 0
+        pending_materials = data.get("pending_materials", [])
+
+        for order in data.get("orders", []):
+            if order.get("qty", 0) > 0:
+                stock_qty += 2
+
+            order_code = order.get("code", "")
+            for mat in pending_materials:
+                if mat.get("code") == order_code and mat.get("pending_qty", 0) > 0:
+                    pending_qty += 1
+
+        if stock_qty > 0:
+            log_label_generation("Estoque NFE", stock_qty)
+        if pending_qty > 0:
+            log_label_generation("Falta NFE", pending_qty)
+    except Exception as e:
+        print(f"Failed to log NFE labels: {e}")
 
     with_qr = qr_code_mode.lower() == "s"
     is_linux = platform.system().lower().startswith("linux")

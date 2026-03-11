@@ -1,9 +1,4 @@
-from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QLabel,
-    QHBoxLayout
-)
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout
 from PySide6.QtCore import Qt
 from src.core.config import ConfigManager
 from src.core.session_manager import SessionManager
@@ -20,14 +15,14 @@ class MainWidget(QWidget):
         self,
         config_manager: ConfigManager,
         session_manager: SessionManager,
-        is_connected: bool = True,  # <-- ADICIONE ESTE ARGUMENTO
+        is_connected: bool = True,  # <-- ADD THIS ARGUMENT
         parent=None,
     ):
         super().__init__(parent)
         self.config_manager = config_manager
         self.session_manager = session_manager
         self.is_connected = is_connected
-        
+
         self.setup_ui()
 
     def setup_ui(self) -> None:
@@ -36,7 +31,9 @@ class MainWidget(QWidget):
 
         if self.is_connected:
             # --- ONLINE MODE: Render standard search widget ---
-            main_layout.addWidget(SearchNfeDataWidget(self.session_manager, self.config_manager))
+            main_layout.addWidget(
+                SearchNfeDataWidget(self.session_manager, self.config_manager)
+            )
         else:
             # --- OFFLINE MODE: Render stylized fallback UI ---
             fallback_layout = QVBoxLayout()
@@ -44,12 +41,16 @@ class MainWidget(QWidget):
 
             lbl_icon = QLabel("⚠️")
             lbl_icon.setAlignment(Qt.AlignCenter)
-            lbl_icon.setStyleSheet("font-size: 72px; margin-bottom: 10px; background: transparent; border: none;")
+            lbl_icon.setStyleSheet(
+                "font-size: 72px; margin-bottom: 10px; background: transparent; border: none;"
+            )
             fallback_layout.addWidget(lbl_icon)
 
             lbl_title = QLabel("Modo Offline (Desconectado)")
             lbl_title.setAlignment(Qt.AlignCenter)
-            lbl_title.setStyleSheet("font-size: 24px; font-weight: bold; color: #0f172a; background: transparent; border: none;")
+            lbl_title.setStyleSheet(
+                "font-size: 24px; font-weight: bold; color: #0f172a; background: transparent; border: none;"
+            )
             fallback_layout.addWidget(lbl_title)
 
             lbl_desc = QLabel(
@@ -57,12 +58,18 @@ class MainWidget(QWidget):
                 "Verifique sua conexão com a internet ou se as credenciais em 'Configurações' estão corretas."
             )
             lbl_desc.setAlignment(Qt.AlignCenter)
-            lbl_desc.setStyleSheet("font-size: 16px; color: #475569; margin-top: 10px; background: transparent; border: none;")
+            lbl_desc.setStyleSheet(
+                "font-size: 16px; color: #475569; margin-top: 10px; background: transparent; border: none;"
+            )
             fallback_layout.addWidget(lbl_desc)
-            
-            lbl_tip = QLabel("💡 Dica: Você ainda pode usar a aba 'Manual' para gerar etiquetas locais.")
+
+            lbl_tip = QLabel(
+                "💡 Dica: Você ainda pode usar a aba 'Manual' para gerar etiquetas locais."
+            )
             lbl_tip.setAlignment(Qt.AlignCenter)
-            lbl_tip.setStyleSheet("font-size: 14px; font-weight: bold; color: #7609e8; margin-top: 20px; background: transparent; border: none;")
+            lbl_tip.setStyleSheet(
+                "font-size: 14px; font-weight: bold; color: #7609e8; margin-top: 20px; background: transparent; border: none;"
+            )
             fallback_layout.addWidget(lbl_tip)
 
             fallback_layout.addStretch()

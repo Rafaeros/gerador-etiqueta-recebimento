@@ -25,18 +25,18 @@ def get_fifo_color(date_str: str) -> str:
         month = datetime.now().month
 
     colors = {
-        1: "#8B4513",  # Marrom
+        1: "#8B4513",  # Brown
         2: "#FF00FF",  # Magenta
-        3: "#FFFFFF",  # Branco
-        4: "#F5F5DC",  # Bege
-        5: "#FFA500",  # Laranja
-        6: "#C8A2C8",  # Lilás
-        7: "#90EE90",  # Verde Claro
-        8: "#ADD8E6",  # Azul Claro
-        9: "#006400",  # Verde Escuro
-        10: "#FFFF00",  # Amarelo
-        11: "#FFC0CB",  # Rosa
-        12: "#D3D3D3",  # Cinza Claro
+        3: "#FFFFFF",  # White
+        4: "#F5F5DC",  # Beige
+        5: "#FFA500",  # Orange
+        6: "#C8A2C8",  # Lilac
+        7: "#90EE90",  # Light Green
+        8: "#ADD8E6",  # Light Blue
+        9: "#006400",  # Dark Green
+        10: "#FFFF00",  # Yellow
+        11: "#FFC0CB",  # Pink
+        12: "#D3D3D3",  # Light Gray
     }
     return colors.get(month, "#FFFFFF")
 

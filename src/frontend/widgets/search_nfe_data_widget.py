@@ -160,7 +160,7 @@ class SearchNfeDataWidget(QWidget):
         self.btn_generate_labels.setEnabled(False)
 
     def handle_generate_labels(self):
-        """Gera as etiquetas lendo o modelo em cache e envia para a impressora."""
+        """Generates labels by reading the cached model and sends them to the printer."""
         if not self.current_nfe_data:
             QMessageBox.warning(self, "Aviso", "Não há dados para gerar etiquetas.")
             return
@@ -221,7 +221,7 @@ class SearchNfeDataWidget(QWidget):
             )
             import logging
 
-            logging.exception("Erro ao gerar ou imprimir as etiquetas")
+            logging.exception("Error generating or printing the labels")
 
         finally:
             self.btn_generate_labels.setText("Gerar Etiquetas")

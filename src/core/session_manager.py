@@ -18,12 +18,12 @@ class SessionManager:
 
     def __init__(self, config_manager: ConfigManager):
         self.config_manager = config_manager
-        self.session = None 
+        self.session = None
         self.base_url = ""
         self.login_code_url = ""
 
     async def _ensure_session(self) -> None:
-        """Garante que a sessão aiohttp seja criada dentro de um event loop ativo."""
+        """Ensures the aiohttp session is created within an active event loop."""
         if self.session is None:
             self.session = aiohttp.ClientSession(
                 headers={

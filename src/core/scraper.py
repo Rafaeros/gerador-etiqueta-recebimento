@@ -136,7 +136,7 @@ class RequestsScraper:
 
                 # Click the view button
                 await page.locator('//*[@id="linkVisualizar"]').click()
-                # pois é um input type="hidden" e nunca ficará "visible".
+                # Wait for the hidden input to be attached to the DOM
                 await page.locator("input#FaturamentoGrid_0_observacao").wait_for(
                     state="attached", timeout=20000
                 )
@@ -150,7 +150,7 @@ class RequestsScraper:
                 logging.exception("Playwright navigation failed: %s", e)
                 return []
             finally:
-                # Opcional: Se quiser que a tela demore 2 segundinhos antes de fechar pra você conseguir ver o resultado final
+                # Optional: If you want the window to wait 2 seconds before closing so you can see the final result
                 # import asyncio
                 # await asyncio.sleep(2)
                 await browser.close()

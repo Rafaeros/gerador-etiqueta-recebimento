@@ -1,7 +1,9 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from src.core.config import ConfigManager
 from src.core.session_manager import SessionManager
-from src.frontend.widgets.main_widget import MainWidget  # Verifique se o import bate com o seu projeto
+from src.frontend.widgets.main_widget import (
+    MainWidget,
+)  # Verify if import matches your project
 
 
 class MainTab(QWidget):
@@ -27,12 +29,10 @@ class MainTab(QWidget):
     def setup_ui(self) -> None:
         """Sets up the layout and loads the main functional widget."""
         main_layout = QVBoxLayout(self)
-        
+
         self.main_widget = MainWidget(
-            self.config_manager, 
-            self.session_manager, 
-            self.is_connected
+            self.config_manager, self.session_manager, self.is_connected
         )
-        
+
         main_layout.addWidget(self.main_widget)
         self.setLayout(main_layout)

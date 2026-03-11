@@ -1,170 +1,198 @@
-/* ================================
-   TEMA CLARO • LIGHT 2025 (ALTO CONTRASTE QT)
-   Fundo App: #f1f5f9 (Cinza suave)
-   Componentes: #ffffff (Branco puro)
-   Bordas: #cbd5e1 (Cinza definido)
-================================ */
+/* ============================================================
+   TEMA PREMIUM LANX • MODERN LIGHT 2025
+   Paleta: Inter Typography, Glassmorphism elements, 
+           Vibrant Gradients, Soft Shadows
+   Colors: 
+     Bg: #f8fafc (Slate 50)
+     Surface: #ffffff (White)
+     Border: #e2e8f0 (Slate 200)
+     Text Primary: #0f172a (Slate 900)
+     Text Secondary: #475569 (Slate 600)
+     Accent: qlineargradient(#7609e8, #316ef3)
+   ============================================================ */
 
 /* -------- BASE GLOBAL -------- */
 QWidget {
-    background-color: #f1f5f9; /* Fundo levemente mais escuro para o branco saltar */
+    background-color: #f8fafc;
     color: #0f172a;
-    font-family: "Segoe UI", "Roboto", sans-serif;
-    font-size: 14px;
+    font-family: "Inter", "Segoe UI", "Roboto", sans-serif;
+    font-size: 13px;
+    outline: none;
 }
 
-/* Links, textos destacados */
-a, QLabel#link {
-    color: #7609e8;
-    font-weight: bold;
+QMainWindow, QDialog {
+    background-color: #f8fafc;
 }
 
-/* ------------------------------
-        BARRA DE ROLAGEM
------------------------------- */
-QScrollBar:vertical {
-    border: none;
-    background: transparent;
-    width: 8px;
-    margin: 0px;
-}
-QScrollBar::handle:vertical {
-    background: #94a3b8; /* Cor mais sólida para a barra de rolagem */
-    border-radius: 4px;
-}
-QScrollBar::handle:vertical:hover {
-    background: #7609e8;
-}
-QScrollBar::add-line, QScrollBar::sub-line {
-    background: none;
-    height: 0px;
+/* -------- LABELS -------- */
+QLabel {
+    color: #475569;
+    font-weight: 500;
 }
 
-/* ------------------------------
-             BOTÕES
------------------------------- */
+QLabel#title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 5px;
+}
+
+/* -------- INPUTS - PREMIUM GLASS LOOK -------- */
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QComboBox {
+    background-color: #ffffff;
+    padding: 10px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #0f172a;
+    selection-background-color: #7609e8;
+}
+
+QLineEdit:hover, QSpinBox:hover, QComboBox:hover {
+    border: 1px solid #cbd5e1;
+}
+
+QLineEdit:focus, QSpinBox:focus, QComboBox:focus {
+    border: 2px solid #7609e8;
+    background-color: #ffffff;
+    padding: 9px 13px; /* Offset for border */
+}
+
+/* -------- BUTTONS -------- */
 QPushButton {
     background-color: #ffffff;
     color: #0f172a;
-    border: 1px solid #cbd5e1; /* Borda mais visível */
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 500;
+    border: 1px solid #e2e8f0;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
 }
+
 QPushButton:hover {
-    background-color: #f8fafc;
-    border: 1px solid #94a3b8; /* Borda escurece no hover */
+    background-color: #f1f5f9;
+    border: 1px solid #cbd5e1;
 }
+
 QPushButton:pressed {
     background-color: #e2e8f0;
 }
 
-/* Botão de Destaque com o Gradiente da Marca */
+/* Primary Button with Gradient */
 QPushButton#primary {
-    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7609e8, stop:1 #316ef3);
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #7609e8, stop:1 #316ef3);
     color: #ffffff;
     border: none;
-    font-weight: bold;
+    font-weight: 700;
 }
+
 QPushButton#primary:hover {
-    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #8b2cf5, stop:1 #4a80f5);
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #8b2cf5, stop:1 #4a80f5);
 }
+
 QPushButton#primary:pressed {
-    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #5c07b5, stop:1 #2554bd);
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #5c07b5, stop:1 #2554bd);
 }
 
-/* ------------------------------
-              INPUTS
------------------------------- */
-QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QComboBox {
-    background-color: #ffffff;
-    color: #0f172a;
-    border: 1px solid #cbd5e1; /* Borda marcante para não sumir */
-    padding: 8px;
-    border-radius: 6px;
+QPushButton:disabled {
+    background-color: #f1f5f9;
+    color: #94a3b8;
+    border: 1px solid #e2e8f0;
 }
 
-QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QComboBox:focus {
-    border: 2px solid #7609e8; /* Foco mais grosso e colorido */
-    background-color: #ffffff;
-    padding: 7px; /* Compensa o pixel extra da borda */
-}
-
-/* ------------------------------
-            TABS
------------------------------- */
+/* -------- TABS - MODERN FLAT LOOK -------- */
 QTabWidget::pane {
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
     background: #ffffff;
-    top: -1px; /* Junta a aba com o painel */
+    top: -1px;
 }
 
 QTabBar::tab {
-    background: #e2e8f0; /* Aba inativa mais cinza */
-    color: #475569;
-    padding: 10px 20px;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
-    border: 1px solid transparent;
-    margin-right: 2px;
-    font-weight: 500;
+    background: transparent;
+    color: #64748b;
+    padding: 12px 24px;
+    margin-right: 4px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    font-weight: 600;
+}
+
+QTabBar::tab:hover {
+    background: #f1f5f9;
+    color: #0f172a;
 }
 
 QTabBar::tab:selected {
-    background-color: #ffffff; /* Aba ativa fica branca igual o painel */
+    background: #ffffff;
     color: #7609e8;
-    border: 1px solid #cbd5e1;
-    border-bottom: 1px solid #ffffff; /* Abre a borda inferior para integrar com o painel */
+    border: 1px solid #e2e8f0;
+    border-bottom: 1.5px solid #ffffff;
 }
 
-QTabBar::tab:hover:!selected {
-    background: #cbd5e1;
-    color: #0f172a;
-}
-
-/* ------------------------------
-            LIST
------------------------------- */
-QListWidget {
+/* -------- TABLES - CLEAN & READABLE -------- */
+QTableWidget {
     background-color: #ffffff;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 4px;
-    outline: 0;
-    color: #0f172a;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    gridline-color: #f1f5f9;
+    selection-background-color: #f1f5f9;
+    selection-color: #7609e8;
+    outline: none;
 }
 
-/* Itens normais */
-QListWidget::item {
-    background-color: transparent;
-    padding: 12px;
-    margin: 2px;
-    border-radius: 4px;
-    color: #1e293b;
-    border-bottom: 1px solid #f1f5f9; /* Linha divisória sutil entre os itens */
-}
-
-/* Hover */
-QListWidget::item:hover {
+QHeaderView::section {
     background-color: #f8fafc;
-    color: #7609e8;
-}
-
-/* Item selecionado */
-QListWidget::item:selected {
-    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7609e8, stop:1 #316ef3);
-    color: #ffffff;
+    color: #64748b;
+    padding: 12px;
     border: none;
+    border-bottom: 2px solid #e2e8f0;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
 }
 
-/* Foco inativo da lista */
-QListWidget::item:selected:!active {
-    background-color: #9b5cfa;
-    color: #ffffff;
+QTableWidget::item {
+    padding: 10px;
+    border-bottom: 1px solid #f8fafc;
 }
 
-/* Focus da lista */
-QListWidget:focus {
-    border: 2px solid #7609e8;
+QTableWidget::item:selected {
+    background-color: #f1f5f9;
+    color: #7609e8;
+    font-weight: 600;
+    border-left: 3px solid #7609e8;
+}
+
+/* -------- SCROLLBARS -------- */
+QScrollBar:vertical {
+    border: none;
+    background: #f8fafc;
+    width: 6px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #cbd5e1;
+    border-radius: 3px;
+    min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #94a3b8;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+/* -------- FRAMES & CARDS -------- */
+QFrame {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+QFrame#card {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
 }

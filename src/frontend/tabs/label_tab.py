@@ -50,14 +50,18 @@ class StockLabelEditor(QFrame):
     def update_bg_color(self, hex_color: str):
         self.setStyleSheet(
             f"""
-            StockLabelEditor {{ background-color: {hex_color}; border: 2px solid #0f172a; border-radius: 5px; }}
-            QLineEdit {{ border: 1px dashed #cbd5e1; background-color: rgba(255, 255, 255, 0.9); padding: 6px; font-size: 16px; font-weight: bold; color: #0f172a;}}
-            QLineEdit:focus {{ border: 2px solid #7609e8; background-color: white; }}
+            StockLabelEditor {{ background-color: {hex_color}; border: 1px solid #e2e8f0; border-radius: 12px; }}
         """
         )
 
     def setup_ui(self):
         layout = QGridLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        header = QLabel("🏠 Etiqueta de Estoque")
+        header.setStyleSheet("font-size: 16px; font-weight: bold; color: #0f172a;")
+        layout.addWidget(header, 0, 0, 1, 2)
 
         self.input_nfe = QLineEdit()
         self.input_nfe.setPlaceholderText("NF (ex: 12345)")
@@ -68,11 +72,15 @@ class StockLabelEditor(QFrame):
         layout.addWidget(self.input_nfe, 0, 0)
         layout.addWidget(self.input_address, 0, 1)
 
+        self.input_oc = QLineEdit()
+        self.input_oc.setPlaceholderText("Ordem de Compra (OC)")
+        layout.addWidget(self.input_oc, 1, 0, 1, 2)
+
         self.input_supplier = QLineEdit()
         self.input_supplier.setPlaceholderText("FORNECEDOR")
         font_large = QFont("Arial", 18, QFont.Bold)
         self.input_supplier.setFont(font_large)
-        layout.addWidget(self.input_supplier, 1, 0, 1, 2)
+        layout.addWidget(self.input_supplier, 2, 0, 1, 2)
 
         self.input_code = QLineEdit()
         self.input_code.setPlaceholderText("CÓDIGO (ex: CNFAT12CZ)")
@@ -80,11 +88,11 @@ class StockLabelEditor(QFrame):
             "background-color: #0f172a; color: white; border: none; padding: 10px;"
         )
         self.input_code.setFont(font_large)
-        layout.addWidget(self.input_code, 2, 0, 1, 2)
+        layout.addWidget(self.input_code, 3, 0, 1, 2)
 
         self.input_desc = QLineEdit()
         self.input_desc.setPlaceholderText("Descrição do material...")
-        layout.addWidget(self.input_desc, 3, 0, 1, 2)
+        layout.addWidget(self.input_desc, 4, 0, 1, 2)
 
         self.input_qty = QLineEdit()
         self.input_qty.setPlaceholderText("Qtd (ex: 100)")
@@ -92,8 +100,12 @@ class StockLabelEditor(QFrame):
         self.input_qty_total = QLineEdit()
         self.input_qty_total.setPlaceholderText("Lote Total (ex: 500)")
 
-        layout.addWidget(self.input_qty, 4, 0)
-        layout.addWidget(self.input_qty_total, 4, 1)
+        layout.addWidget(self.input_qty, 5, 0)
+        layout.addWidget(self.input_qty_total, 5, 1)
+
+        self.input_unit = QLineEdit()
+        self.input_unit.setPlaceholderText("Unidade (un, mt, etc.)")
+        layout.addWidget(self.input_unit, 6, 0, 1, 2)
 
     def get_data(self) -> dict:
         """Collect data from the editor"""
@@ -106,6 +118,8 @@ class StockLabelEditor(QFrame):
             "description": self.input_desc.text(),
             "qty": self.input_qty.text(),
             "qty_total": self.input_qty_total.text(),
+            "oc": self.input_oc.text(),
+            "unit": self.input_unit.text(),
         }
 
     def clear_fields(self):
@@ -116,6 +130,8 @@ class StockLabelEditor(QFrame):
         self.input_desc.clear()
         self.input_qty.clear()
         self.input_qty_total.clear()
+        self.input_oc.clear()
+        self.input_unit.clear()
 
 
 class PendingLabelEditor(QFrame):
@@ -127,14 +143,21 @@ class PendingLabelEditor(QFrame):
     def update_bg_color(self, hex_color: str):
         self.setStyleSheet(
             f"""
-            PendingLabelEditor {{ background-color: {hex_color}; border: 2px solid #0f172a; border-radius: 5px; }}
-            QLineEdit {{ border: 1px solid #cbd5e1; background-color: rgba(255, 255, 255, 0.95); color: #0f172a; padding: 8px; border-radius: 4px; font-size: 16px; font-weight: bold;}}
-            QLineEdit:focus {{ border: 2px solid #7609e8; background-color: white; }}
+            PendingLabelEditor {{ background-color: {hex_color}; border: 1px solid #e2e8f0; border-radius: 12px; }}
         """
         )
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+
+        header = QLabel("⚠️ Etiqueta de Falta")
+        header.setStyleSheet(
+            "font-size: 16px; font-weight: bold; color: #0f172a; margin-bottom: 5px;"
+        )
+        layout.addWidget(header)
+
         top_layout = QHBoxLayout()
         self.input_nfe = QLineEdit()
         self.input_nfe.setPlaceholderText("NF 12345")
@@ -194,14 +217,22 @@ class NFELabelEditor(QFrame):
     def update_bg_color(self, hex_color: str):
         self.setStyleSheet(
             f"""
-            NFELabelEditor {{ background-color: {hex_color}; border: 2px solid #0f172a; border-radius: 5px; }}
-            QLineEdit {{ border: 1px dashed #cbd5e1; background-color: rgba(255, 255, 255, 0.9); padding: 10px; color: #0f172a; }}
-            QLineEdit:focus {{ border: 2px solid #7609e8; background-color: white; }}
+            NFELabelEditor {{ background-color: {hex_color}; border: 1px solid #e2e8f0; border-radius: 12px; }}
         """
         )
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        header = QLabel("📦 Etiqueta de NFE")
+        header.setStyleSheet(
+            "font-size: 16px; font-weight: bold; color: #0f172a; margin-bottom: 5px;"
+        )
+        header.setAlignment(Qt.AlignCenter)
+        layout.addWidget(header)
+
         layout.addStretch()
 
         self.input_nfe = QLineEdit()
@@ -289,11 +320,11 @@ class LabelTab(QWidget):
 
         action_layout = QHBoxLayout()
 
-        self.btn_clear = QPushButton("Limpar Campos")
+        self.btn_clear = QPushButton("🧹 Limpar Campos")
         self.btn_clear.setMinimumHeight(45)
         self.btn_clear.clicked.connect(self.clear_current_editor)
 
-        self.btn_print = QPushButton("Gerar e Imprimir (Enter)")
+        self.btn_print = QPushButton("🚀 Gerar e Imprimir Etiquetas")
         self.btn_print.setMinimumHeight(45)
         self.btn_print.setMinimumWidth(250)
         self.btn_print.setObjectName("primary")
@@ -309,6 +340,7 @@ class LabelTab(QWidget):
         main_layout.addLayout(stage_layout)
         main_layout.addStretch()
         main_layout.addLayout(action_layout)
+        main_layout.setContentsMargins(20, 20, 20, 20)
 
         self.apply_fifo_color()
         self.stock_editor.input_qty_total.returnPressed.connect(self.handle_print)

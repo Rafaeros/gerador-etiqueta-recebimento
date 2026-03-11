@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
+    QFrame,
 )
 from datetime import datetime, timedelta
 from src.core.session_manager import SessionManager
@@ -35,18 +36,43 @@ class SearchNfeDataWidget(QWidget):
     def setup_ui(self) -> None:
         """Sets up the user interface layout and components."""
         layout = QVBoxLayout(self)
-        search_layout = QHBoxLayout()
-        self.id_label = QLabel("ID da Compra:")
+        # Header Title
+        title_label = QLabel("📦 Recebimento de Materiais")
+        title_label.setObjectName("title")
+        layout.addWidget(title_label)
+
+        # Search Container
+        search_card = QFrame()
+        search_card.setObjectName("card")
+        search_card_layout = QVBoxLayout(search_card)
+        search_card_layout.setContentsMargins(15, 15, 15, 15)
+
+        search_input_layout = QHBoxLayout()
+        self.id_label = QLabel("Compra ID:")
         self.id_input = QLineEdit()
-        self.id_input.setPlaceholderText("Ex: 49555...")
+        self.id_input.setPlaceholderText("Digite o ID da compra (ex: 45678)...")
+        self.id_input.setFixedWidth(300)
 
-        self.btn_search = QPushButton("Buscar")
+        self.btn_search = QPushButton("🔍 Buscar Dados")
         self.btn_search.setObjectName("primary")
+        self.btn_search.setMinimumWidth(150)
         self.btn_search.clicked.connect(self.handle_search)
+        self.id_input.returnPressed.connect(self.handle_search)
 
-        search_layout.addWidget(self.id_label)
-        search_layout.addWidget(self.id_input)
-        search_layout.addWidget(self.btn_search)
+        search_input_layout.addWidget(self.id_label)
+        search_input_layout.addWidget(self.id_input)
+        search_input_layout.addWidget(self.btn_search)
+        search_input_layout.addStretch()
+
+        search_card_layout.addLayout(search_input_layout)
+        layout.addWidget(search_card)
+
+        # Table Section
+        table_label = QLabel("📑 Materiais Encontrados")
+        table_label.setStyleSheet(
+            "font-weight: bold; color: #475569; margin-top: 10px;"
+        )
+        layout.addWidget(table_label)
 
         self.table_widget = QTableWidget()
         self.table_widget.setColumnCount(7)
@@ -73,16 +99,20 @@ class SearchNfeDataWidget(QWidget):
 
         actions_layout = QHBoxLayout()
 
-        self.btn_generate_labels = QPushButton("Gerar Etiquetas")
+        self.btn_generate_labels = QPushButton("🖨️ Gerar e Imprimir Etiquetas")
         self.btn_generate_labels.setObjectName("primary")
+        self.btn_generate_labels.setMinimumHeight(45)
+        self.btn_generate_labels.setMinimumWidth(250)
         self.btn_generate_labels.setEnabled(False)
         self.btn_generate_labels.clicked.connect(self.handle_generate_labels)
 
         actions_layout.addStretch()
         actions_layout.addWidget(self.btn_generate_labels)
-        layout.addLayout(search_layout)
+
         layout.addWidget(self.table_widget)
         layout.addLayout(actions_layout)
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
 
     @asyncSlot()
     async def handle_search(self) -> None:

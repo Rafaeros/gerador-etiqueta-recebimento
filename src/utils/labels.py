@@ -645,12 +645,12 @@ def generate_manual_labels(data: dict, qr_code_mode: str) -> List[str]:
                 order_fake = {
                     "nfe": data.get("nfe", ""),
                     "address": data.get("address", ""),  # <-- CORRECTION HERE
-                    "order": "",
+                    "order": data.get("oc", ""),
                     "code": data.get("code", ""),
                     "description": data.get("description", ""),
                     "qty": safe_float(data.get("qty")),
                     "qty_total": safe_float(data.get("qty_total")),
-                    "unit_type": "un",
+                    "unit_type": data.get("unit", "un"),
                     "supplier": data.get("supplier", ""),
                 }
                 _generate_single_stock_img(
@@ -683,12 +683,12 @@ def generate_manual_labels(data: dict, qr_code_mode: str) -> List[str]:
                 order_fake = {
                     "nfe": data.get("nfe", ""),
                     "address": data.get("address", ""),  # <-- CORRECTION HERE
-                    "order": "",
+                    "order": data.get("oc", ""),
                     "code": data.get("code", ""),
                     "description": data.get("description", ""),
                     "qty": safe_float(data.get("qty")),
                     "qty_total": safe_float(data.get("qty_total")),
-                    "unit_type": "un",
+                    "unit_type": data.get("unit", "un"),
                     "supplier": data.get("supplier", ""),
                 }
                 _draw_single_stock_label_pdf(

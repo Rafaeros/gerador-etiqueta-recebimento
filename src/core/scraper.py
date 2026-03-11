@@ -1,5 +1,6 @@
 import re
 import logging
+import asyncio
 from typing import List
 from bs4 import BeautifulSoup
 from datetime import datetime as dt
@@ -25,9 +26,14 @@ class RequestsScraper:
         """
         Orchestrates the extraction of the NFe data using Playwright, matches it
         with pending materials, processes the quantities, and saves the JSON.
+        Runs NFe extraction and Pending materials fetching in parallel for speed.
         """
-        # 1. Extract NFe data using Playwright headless browser
-        orders_list = await self.extract_nfe_data_playwright(negociation_id)
+        # 1. Start both extractions in parallel
+        nfe_task = self.extract_nfe_data_playwright(negociation_id)
+        pending_task = self.fetch_pending_materials_html(init_date, end_date)
+
+        logging.info("Starting parallel extraction for NFe and Pending Materials...")
+        orders_list, pending_html = await asyncio.gather(nfe_task, pending_task)
 
         if not orders_list:
             logging.warning("No orders found for negotiation ID %s.", negociation_id)
@@ -42,9 +48,9 @@ class RequestsScraper:
         real_nfe_number = orders_list[0].nfe
         supplier = orders_list[0].supplier
 
-        # 2. Extract pending materials using the existing aiohttp method
+        # 2. Extract pending materials from the pre-fetched HTML
         codes = [order.code for order in orders_list]
-        pending_data_dict = await self.extract_pending_materials(codes)
+        pending_data_dict = self._parse_pending_materials(pending_html, codes)
         pending_list = pending_data_dict.get("pending_materials", [])
 
         # Sort pending materials by creation date
@@ -235,18 +241,16 @@ class RequestsScraper:
         )
         return data
 
-    async def extract_pending_materials(
-        self,
-        nfe_material_code: List[str],
-    ) -> dict:
+    async def fetch_pending_materials_html(
+        self, init_date: str = None, end_date: str = None
+    ) -> str:
         """
-        Extracts pending materials from the HTML response, applying filters for unit type and NFe codes.
-        (This method remains running efficiently on aiohttp without browser overhead)
+        Fetches the pending materials report HTML using aiohttp.
         """
         session = self.session_manager.session
         if not session:
             logging.error("HTTP Session not initialized. Please login first.")
-            return {}
+            return ""
 
         endpoint = f"{self.session_manager.base_url}/pedido/exportarPedidoFaltaMP"
         headers = {
@@ -261,8 +265,8 @@ class RequestsScraper:
             ("Pedido[status_id]", ""),
             ("Pedido[situacao]", "TODAS"),
             ("Pedido[_qtdeFornecida]", "Parcialmente"),
-            ("Pedido[_inicioCriacao]", "01/10/2025"),
-            ("Pedido[_fimCriacao]", f"31/12/{dt.now().year}"),
+            ("Pedido[_inicioCriacao]", init_date or "01/10/2025"),
+            ("Pedido[_fimCriacao]", end_date or f"31/12/{dt.now().year}"),
             ("pageSize", "20"),
         ]
 
@@ -272,13 +276,17 @@ class RequestsScraper:
                 endpoint, headers=headers, params=params
             ) as response:
                 response.raise_for_status()
-                html_content = await response.text()
-
-                return self._parse_pending_materials(html_content, nfe_material_code)
-
+                return await response.text()
         except Exception as e:
-            logging.exception("Failed to capture pending materials: %s", e)
-            return {}
+            logging.exception("Failed to capture pending materials HTML: %s", e)
+            return ""
+
+    async def extract_pending_materials(self, nfe_material_code: List[str]) -> dict:
+        """
+        Standalone method to extract and parse pending materials.
+        """
+        html = await self.fetch_pending_materials_html()
+        return self._parse_pending_materials(html, nfe_material_code)
 
     def _parse_pending_materials(self, html: str, nfe_material_code: List[str]) -> dict:
         """

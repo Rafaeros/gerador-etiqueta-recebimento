@@ -181,8 +181,8 @@ def _draw_single_stock_label_pdf(pdf: Canvas, data: dict, order: dict, qr_code: 
 
     if qr_code:
         qr_data = f"{order.get('code', '')};{int(order.get('qty', 0))}"
-        qr_x_mm = PAGE_W_MM - MARGIN_MM - 10
-        draw_pdf_qr(pdf, qr_data, qr_x_mm * mm, 3 * mm, 10 * mm)
+        qr_x_mm = PAGE_W_MM - MARGIN_MM - 15
+        draw_pdf_qr(pdf, qr_data, qr_x_mm * mm, 3 * mm, 15 * mm)
 
     draw_pdf_text(pdf, PAGE_H_MM - 25, order.get("supplier", ""), max_w_mm=85, size=22)
     draw_pdf_text(
@@ -390,10 +390,10 @@ def _generate_single_stock_img(
         qr.add_data(qr_data)
         qr.make(fit=True)
         q_img = qr.make_image(fill_color="black", back_color="white").resize(
-            (x_px(10), x_px(10)), Image.NEAREST
+            (x_px(15), x_px(15)), Image.NEAREST
         )
-        qr_x_mm = PAGE_W_MM - MARGIN_MM - 10
-        img.paste(q_img, (x_px(qr_x_mm), y_px(PAGE_H_MM - 13)))
+        qr_x_mm = PAGE_W_MM - MARGIN_MM - 15
+        img.paste(q_img, (x_px(qr_x_mm), y_px(PAGE_H_MM - 18)))
 
     draw_img_text(draw, PAGE_H_MM - 25, order.get("supplier", ""), max_w_mm=85, size=22)
     draw_img_text(

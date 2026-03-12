@@ -67,8 +67,12 @@ class RequestsScraper:
             pending_materials=pending_list,
         )
 
-        # 3. Validation and quantity deduction logic
         if nfe_data.pending_materials:
+            nfe_data.pending_materials = sorted(
+                nfe_data.pending_materials,
+                key=lambda x: dt.strptime(x["creation_date"], "%d/%m/%y"),
+            )
+
             for pending_material in nfe_data.pending_materials:
                 for order in nfe_data.orders:
                     if pending_material["code"] == order.code:
@@ -77,25 +81,25 @@ class RequestsScraper:
                             order.qty,
                             pending_material["pending_qty"],
                         )
-                        if order.qty == 0:
+                        
+                        if order.qty <= 0:
                             pending_material["pending_qty"] = 0
                             continue
 
-                        if pending_material["pending_qty"] > order.qty:
+                        if pending_material["pending_qty"] >= order.qty:
                             pending_material["pending_qty"] = order.qty
                             order.qty = 0.0
                         else:
                             order.qty -= pending_material["pending_qty"]
+                            
+                        break
 
-            # Keep only pending materials that still have quantity > 0
             nfe_data.pending_materials = [
                 pm for pm in nfe_data.pending_materials if pm["pending_qty"] > 0
             ]
 
-        # We no longer filter out orders with qty == 0 so they can be shown in the UI
-        # and their pending materials can still be printed.
+        nfe_data.orders = [order for order in nfe_data.orders if order.qty > 0]
 
-        # Save to JSON
         nfe_data.save_to_json(str(real_nfe_number))
         logging.info(
             "Process completed. File saved as ./tmp/data_%s.json", real_nfe_number

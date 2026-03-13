@@ -44,7 +44,7 @@ try:
     pdfmetrics.registerFont(TTFont("Arial", FONTS_PATH / "Arial.ttf"))
     pdfmetrics.registerFont(TTFont("Arial-Bold", FONTS_PATH / "Arial-Bold.ttf"))
 except Exception:
-    pass  # Falback to default Helvetica if missing
+    pass  # Fallback to default Helvetica if missing
 
 
 # --- Helper Functions ---

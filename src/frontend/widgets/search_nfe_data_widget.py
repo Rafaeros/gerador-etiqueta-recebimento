@@ -129,13 +129,9 @@ class SearchNfeDataWidget(QWidget):
         self.btn_generate_labels.setEnabled(False)
 
         try:
-            now = datetime.now()
-            init_date = (now - timedelta(days=30)).strftime("%d/%m/%Y")
-            end_date = now.strftime("%d/%m/%Y")
-
             scraper = RequestsScraper(self.session_manager)
             response = await scraper.extract_all_data(
-                negociation_id=negociation_id, init_date=init_date, end_date=end_date
+                negociation_id=negociation_id
             )
             self.current_nfe_data = response
             self.populate_table(response.orders)

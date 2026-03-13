@@ -21,7 +21,7 @@ class RequestsScraper:
         self.session_manager = session_manager
 
     async def extract_all_data(
-        self, negociation_id: str, init_date: str, end_date: str
+        self, negociation_id: str
     ) -> NFeData:
         """
         Orchestrates the extraction of the NFe data using Playwright, matches it
@@ -30,7 +30,7 @@ class RequestsScraper:
         """
         # 1. Start both extractions in parallel
         nfe_task = self.extract_nfe_data_playwright(negociation_id)
-        pending_task = self.fetch_pending_materials_html(init_date, end_date)
+        pending_task = self.fetch_pending_materials_html()
 
         logging.info("Starting parallel extraction for NFe and Pending Materials...")
         orders_list, pending_html = await asyncio.gather(nfe_task, pending_task)
@@ -53,12 +53,6 @@ class RequestsScraper:
         pending_data_dict = self._parse_pending_materials(pending_html, codes)
         pending_list = pending_data_dict.get("pending_materials", [])
 
-        # Sort pending materials by creation date
-        pending_list = sorted(
-            pending_list,
-            key=lambda x: dt.strptime(x["creation_date"], "%d/%m/%y"),
-        )
-
         nfe_data = NFeData(
             date=dt.now().strftime("%d/%m/%y"),
             nfe_number=real_nfe_number,
@@ -67,38 +61,57 @@ class RequestsScraper:
             pending_materials=pending_list,
         )
 
+        # 3. Match and deduct quantities (Improved FIFO logic)
         if nfe_data.pending_materials:
+            # Sort pending materials by creation date (oldest first)
+            def get_sort_key(item):
+                date_val = dt.strptime(item["creation_date"], "%d/%m/%y")
+                # Extract only the numbers from the OP to use as tiebreaker (ex: 'OP-0002369' -> 2369)
+                try:
+                    op_val = int(re.sub(r'\D', '', item["op_number"]))
+                except ValueError:
+                    op_val = 0
+                return (date_val, op_val)
+
+            # Sort using the date (oldest first) and OP as tiebreaker (smaller first)
             nfe_data.pending_materials = sorted(
                 nfe_data.pending_materials,
-                key=lambda x: dt.strptime(x["creation_date"], "%d/%m/%y"),
+                key=get_sort_key
             )
 
             for pending_material in nfe_data.pending_materials:
                 for order in nfe_data.orders:
                     if pending_material["code"] == order.code:
+                        if order.qty <= 0:
+                            continue  # Skip if the order has already been fully consumed
+
                         logging.info(
                             "Matching - Order qty: %s | Pending qty: %s",
                             order.qty,
                             pending_material["pending_qty"],
                         )
                         
-                        if order.qty <= 0:
-                            pending_material["pending_qty"] = 0
-                            continue
-
+                        # Improved deduction logic: Exact subtraction without risky while loops for floats.
                         if pending_material["pending_qty"] >= order.qty:
-                            pending_material["pending_qty"] = order.qty
+                            # The pending quantity consumes the entire current order.
+                            pending_material["pending_qty"] -= order.qty
                             order.qty = 0.0
                         else:
+                            # The order fully supplies the pending quantity and leaves a balance.
                             order.qty -= pending_material["pending_qty"]
+                            pending_material["pending_qty"] = 0.0
                             
-                        break
+                        # If the pending material was fully served, end the order loop for it.
+                        if pending_material["pending_qty"] == 0:
+                            break
 
+            # Remove pending materials that were fully served
             nfe_data.pending_materials = [
                 pm for pm in nfe_data.pending_materials if pm["pending_qty"] > 0
             ]
 
-        nfe_data.orders = [order for order in nfe_data.orders if order.qty > 0]
+        # Remove orders that were fully consumed by pending materials
+        #nfe_data.orders = [order for order in nfe_data.orders if order.qty > 0]
 
         nfe_data.save_to_json(str(real_nfe_number))
         logging.info(
@@ -110,7 +123,7 @@ class RequestsScraper:
     async def extract_nfe_data_playwright(self, negociation_id: str) -> List[OrderData]:
         """
         Navigates using Playwright, injecting the authenticated cookies from aiohttp.
-        Currently set to headless=False so you can see the browser actions.
+        Waits for network idle to ensure the DOM is completely populated.
         """
 
         if not self.session_manager.session:
@@ -139,19 +152,32 @@ class RequestsScraper:
             try:
                 logging.info("Navigating to negotiation %s...", negociation_id)
                 url = f"{self.session_manager.base_url}/compra?Compra%5Bnegociacao%5D={negociation_id}"
-                await page.goto(url, wait_until="domcontentloaded", timeout=20000)
+                
+                # Wait until network connections stabilize (networkidle)
+                await page.goto(url, wait_until="networkidle", timeout=30000)
+                
                 checkbox_locator = page.locator('//*[@id="compraSelecionados_0"]')
                 await checkbox_locator.wait_for(state="visible", timeout=20000)
                 await checkbox_locator.click()
 
                 # Click the view button
                 await page.locator('//*[@id="linkVisualizar"]').click()
-                # Wait for the hidden input to be attached to the DOM
+                
+                # Wait for the NFe input to appear
                 await page.locator("input#FaturamentoGrid_0_observacao").wait_for(
                     state="attached", timeout=20000
                 )
 
-                # Extract the final rendered HTML
+                # NEW WAIT: Wait for the network to be silent again to ensure AJAX of the modal rendered everything.
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=15000)
+                except Exception as e:
+                    logging.warning("Network idle timeout in NFe visualization, continuing extraction...")
+
+                # Additional safety delay imitating human behavior and Selenium's implicit delay
+                await page.wait_for_timeout(1500)
+
+                # Extract the rendered HTML
                 html_content = await page.content()
 
                 return self._parse_nfe_data_html(html_content)
@@ -160,9 +186,6 @@ class RequestsScraper:
                 logging.exception("Playwright navigation failed: %s", e)
                 return []
             finally:
-                # Optional: If you want the window to wait 2 seconds before closing so you can see the final result
-                # import asyncio
-                # await asyncio.sleep(2)
                 await browser.close()
 
     def _parse_nfe_data_html(self, html: str) -> List[OrderData]:
@@ -214,7 +237,7 @@ class RequestsScraper:
                     )
                     continue
 
-                # AGGREGATION LOGIC (Sums quantities and concatenates orders for the same code)
+                # AGGREGATION LOGIC
                 if code in aggregated_data:
                     aggregated_data[code]["qty"] += qty_val
                     aggregated_data[code]["qty_total"] += qty_val
@@ -235,7 +258,6 @@ class RequestsScraper:
                         "unit_type": unit_type,
                     }
 
-        # Convert dictionary values to a list of OrderData Pydantic models
         data: List[OrderData] = [OrderData(**item) for item in aggregated_data.values()]
 
         logging.info(
@@ -246,7 +268,7 @@ class RequestsScraper:
         return data
 
     async def fetch_pending_materials_html(
-        self, init_date: str = None, end_date: str = None
+        self
     ) -> str:
         """
         Fetches the pending materials report HTML using aiohttp.
@@ -263,16 +285,16 @@ class RequestsScraper:
             "Referer": f"{self.session_manager.base_url}/pedido/pedidoFaltaMP",
         }
 
-        params = [
-            ("Pedido[_nomeMaterial]", ""),
-            ("Pedido[_solicitante]", ""),
-            ("Pedido[status_id]", ""),
-            ("Pedido[situacao]", "TODAS"),
-            ("Pedido[_qtdeFornecida]", "Parcialmente"),
-            ("Pedido[_inicioCriacao]", init_date or "01/10/2025"),
-            ("Pedido[_fimCriacao]", end_date or f"31/12/{dt.now().year}"),
-            ("pageSize", "20"),
-        ]
+        params = {
+            'Pedido[_nomeMaterial]': '',
+            'Pedido[_solicitante]': '',
+            'Pedido[status_id]': '',
+            'Pedido[situacao]': 'TODAS',
+            'Pedido[_qtdeFornecida]': 'Parcialmente',
+            'Pedido[_inicioCriacao]': '01/01/2026',
+            'Pedido[_fimCriacao]': '',
+            'pageSize': '20',
+        }
 
         try:
             logging.info("Fetching pending materials report via aiohttp...")

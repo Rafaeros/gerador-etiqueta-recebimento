@@ -65,54 +65,59 @@ class RequestsScraper:
         if nfe_data.pending_materials:
             # Sort pending materials by creation date (oldest first)
             def get_sort_key(item):
-                date_val = dt.strptime(item["creation_date"], "%d/%m/%y")
-                # Extract only the numbers from the OP to use as tiebreaker (ex: 'OP-0002369' -> 2369)
+                date_str = item["creation_date"]
+                try:
+                    date_val = dt.strptime(date_str, "%d/%m/%y")
+                except ValueError:
+                    try:
+                        date_val = dt.strptime(date_str, "%d/%m/%Y")
+                    except ValueError:
+                        date_val = dt.min
+                
                 try:
                     op_val = int(re.sub(r'\D', '', item["op_number"]))
                 except ValueError:
                     op_val = 0
                 return (date_val, op_val)
 
-            # Sort using the date (oldest first) and OP as tiebreaker (smaller first)
             nfe_data.pending_materials = sorted(
                 nfe_data.pending_materials,
                 key=get_sort_key
             )
 
             for pending_material in nfe_data.pending_materials:
+                pending_material["allocated_qty"] = 0.0 
+
                 for order in nfe_data.orders:
                     if pending_material["code"] == order.code:
-                        if order.qty <= 0:
-                            continue  # Skip if the order has already been fully consumed
+                        if order.qty <= 0.001: 
+                            continue
 
-                        logging.info(
-                            "Matching - Order qty: %s | Pending qty: %s",
-                            order.qty,
-                            pending_material["pending_qty"],
-                        )
-                        
-                        # Improved deduction logic: Exact subtraction without risky while loops for floats.
-                        if pending_material["pending_qty"] >= order.qty:
-                            # The pending quantity consumes the entire current order.
-                            pending_material["pending_qty"] -= order.qty
-                            order.qty = 0.0
-                        else:
-                            # The order fully supplies the pending quantity and leaves a balance.
-                            order.qty -= pending_material["pending_qty"]
-                            pending_material["pending_qty"] = 0.0
-                            
-                        # If the pending material was fully served, end the order loop for it.
-                        if pending_material["pending_qty"] == 0:
+                        needed = pending_material["pending_qty"]
+                        available = order.qty
+                        matched_qty = min(needed, available)
+
+                        if matched_qty > 0:
+                            logging.info(
+                                "Match [Code: %s] OP: %s | Alocando: %s (NFe tinha %s, Falta era %s)",
+                                order.code, pending_material["op_number"], matched_qty, available, needed
+                            )
+
+                            pending_material["pending_qty"] -= matched_qty
+                            pending_material["allocated_qty"] += matched_qty
+                            order.qty -= matched_qty
+
+                        if pending_material["pending_qty"] <= 0.001:
                             break
 
-            # Remove pending materials that were fully served
             nfe_data.pending_materials = [
-                pm for pm in nfe_data.pending_materials if pm["pending_qty"] > 0
+                pm for pm in nfe_data.pending_materials if pm.get("allocated_qty", 0) > 0.001
             ]
 
-        # Remove orders that were fully consumed by pending materials
-        #nfe_data.orders = [order for order in nfe_data.orders if order.qty > 0]
+        # Remove orders that were fully consumed
+        # nfe_data.orders = [order for order in nfe_data.orders if order.qty > 0]
 
+        # 4. Save the JSON
         nfe_data.save_to_json(str(real_nfe_number))
         logging.info(
             "Process completed. File saved as ./tmp/data_%s.json", real_nfe_number

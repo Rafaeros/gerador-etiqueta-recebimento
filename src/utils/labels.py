@@ -283,7 +283,7 @@ def _draw_single_pending_label_pdf(pdf: Canvas, nfe_number: str, mat: dict):
     draw_pdf_text(
         pdf,
         8,
-        f"QUANTIDADE: {int(mat.get('pending_qty', 0))} UND",
+        f"QUANTIDADE: {int(mat.get('allocated_qty', mat.get('pending_qty', 0)))} UND",
         offset_x_mm=-5,
         font="Arial",
         size=10,
@@ -493,7 +493,7 @@ def _generate_single_pending_img(nfe_number: str, mat: dict, output_path: str):
     draw_img_text(
         draw,
         8,
-        f"QUANTIDADE: {int(mat.get('pending_qty', 0))} UND",
+        f"QUANTIDADE: {int(mat.get('allocated_qty', mat.get('pending_qty', 0)))} UND",
         offset_x_mm=-5,
         font_name="Arial",
         size=10,
@@ -560,7 +560,7 @@ def generate_pdf_document(data: dict, qr_code: bool) -> List[str]:
         nfe_str = str(order.get("nfe", data.get("nfe_number", "")))
 
         for mat in pending_materials:
-            if mat.get("code") == order_code and mat.get("pending_qty", 0) > 0:
+            if mat.get("code") == order_code and mat.get("allocated_qty", 0) > 0:
                 _draw_single_pending_label_pdf(pdf, nfe_str, mat)
 
     pdf.save()
@@ -592,7 +592,7 @@ def generate_img_documents(data: dict, qr_code: bool) -> List[str]:
         nfe_str = str(order.get("nfe", data.get("nfe_number", "")))
 
         for mat in pending_materials:
-            if mat.get("code") == order_code and mat.get("pending_qty", 0) > 0:
+            if mat.get("code") == order_code and mat.get("allocated_qty", 0) > 0:
                 path = str(LABELS_FOLDER / f"label_job_{idx:03d}_pending.png")
                 _generate_single_pending_img(nfe_str, mat, path)
                 paths.append(path)
@@ -741,7 +741,7 @@ def generate_nfe_labels(nfe_number: str, qr_code_mode: str) -> List[str]:
 
             order_code = order.get("code", "")
             for mat in pending_materials:
-                if mat.get("code") == order_code and mat.get("pending_qty", 0) > 0:
+                if mat.get("code") == order_code and mat.get("allocated_qty", 0) > 0:
                     pending_qty += 1
 
         if stock_qty > 0:
